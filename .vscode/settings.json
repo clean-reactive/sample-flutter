@@ -1,20 +1,16 @@
 {
-  // Point the Dart/Flutter extension at the fvm-pinned SDK.
-  // Without this it finds no SDK at all, since fvm keeps `flutter` off PATH.
-  "dart.flutterSdkPath": ".fvm/flutter_sdk",
-
-  // The SDK symlink resolves into ~/fvm/versions; indexing it would pull the
-  // whole Flutter framework into search results and the file watcher.
+  "dart.flutterSdkPath": ".fvm/versions/3.47.1",
   "search.exclude": {
     "**/.fvm": true
   },
   "files.watcherExclude": {
     "**/.fvm": true
   },
-
   "dart.lineLength": 80,
   "editor.formatOnSave": true,
-  "editor.rulers": [80],
+  "editor.rulers": [
+    80
+  ],
   "[dart]": {
     "editor.defaultFormatter": "Dart-Code.dart-code",
     "editor.codeActionsOnSave": {
