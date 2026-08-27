@@ -1,3 +1,11 @@
 
 # FVM Version Cache
 .fvm/
+
+# local-only files (e.g. todos.local.json)
+*.local
+*.local.*
+
+# lock files
+*.lock
+
