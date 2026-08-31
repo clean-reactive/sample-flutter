@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 ///
 /// It declares no presenter or controller of its own — it is a piece of the
 /// unit's layout, named so the layout reads declaratively. It is deliberately
-/// kept out of the components barrel: it carries no contract and is not an
+/// kept out of the widgets barrel: it carries no contract and is not an
 /// architectural unit.
 class Field extends StatelessWidget {
   const Field({super.key, required this.label, required this.value});

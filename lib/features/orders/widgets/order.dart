@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../order_item/order_item.dart';
+import 'order_item.dart';
 
 /// Contracts of the order unit.
 ///

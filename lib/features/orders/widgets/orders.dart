@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../order/order.dart';
-import '../orders_resource_picker/orders_resource_picker.dart';
-import '../orders_statistics/orders_statistics.dart';
+import 'order.dart';
+import 'orders_resource_picker.dart';
+import 'orders_statistics.dart';
 
 /// Contract of the orders unit.
 ///
