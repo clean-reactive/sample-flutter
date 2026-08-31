@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'order.dart';
 import 'orders_resource_picker.dart';
 import 'orders_statistics.dart';
+import 'section_label.dart';
 
 /// Contract of the orders unit.
 ///
@@ -62,10 +63,6 @@ class _UserInterface extends StatelessWidget implements OrdersPresenter {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final labelStyle = theme.textTheme.labelSmall?.copyWith(
-      letterSpacing: 1.5,
-      color: theme.colorScheme.onSurfaceVariant,
-    );
 
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 560),
@@ -79,7 +76,7 @@ class _UserInterface extends StatelessWidget implements OrdersPresenter {
           ),
           const SizedBox(height: 20),
 
-          Text('RESOURCE', style: labelStyle),
+          const SectionLabel('RESOURCE'),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -103,7 +100,7 @@ class _UserInterface extends StatelessWidget implements OrdersPresenter {
           ),
           const SizedBox(height: 20),
 
-          Text('STATISTICS', style: labelStyle),
+          const SectionLabel('STATISTICS'),
           const SizedBox(height: 8),
           const OrdersStatistics(),
           const SizedBox(height: 20),

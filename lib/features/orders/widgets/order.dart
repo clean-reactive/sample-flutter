@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'order_item.dart';
+import 'section_label.dart';
 
 /// Contracts of the order unit.
 ///
@@ -84,10 +85,6 @@ class _UserInterface extends StatelessWidget
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final labelStyle = theme.textTheme.labelSmall?.copyWith(
-      letterSpacing: 1.5,
-      color: theme.colorScheme.onSurfaceVariant,
-    );
 
     return Card(
       child: Padding(
@@ -104,7 +101,7 @@ class _UserInterface extends StatelessWidget
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('ORDER', style: labelStyle),
+                      const SectionLabel('ORDER'),
                       const SizedBox(height: 4),
                       Text(orderId, style: theme.textTheme.titleSmall),
                       const SizedBox(height: 4),
