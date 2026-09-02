@@ -10,13 +10,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'order_entities.dart';
 import 'orders_gateway.dart';
+import 'orders_service.dart';
 
 /// External resource the repository reads through.
 ///
-/// It has no default. Which resource is read — local or remote — is chosen at
-/// composition, by overriding this, exactly as the contract intends.
+/// Which implementation that is comes from [makeOrdersService]. Overriding this
+/// replaces it wholesale, which is how a test supplies its own.
 final ordersGatewayProvider = Provider<OrdersGateway>(
-  (ref) => throw UnimplementedError('no OrdersGateway configured'),
+  (ref) => makeOrdersService(),
 );
 
 /// Orders the repository holds. Absent until a read succeeds.
