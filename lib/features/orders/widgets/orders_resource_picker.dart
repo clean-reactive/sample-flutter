@@ -1,62 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Contracts of the orders resource picker unit.
-///
-/// Both members are shaped by what the layout binds them to. `SegmentedButton`
-/// works in sets of segment values, so the contract speaks in sets too — the
-/// unit hands them over untouched instead of converting between a set and a
-/// flag on the way past.
-abstract interface class OrdersResourcePickerPresenter {
-  Set<String> get selectedResources;
-}
-
-abstract interface class OrdersResourcePickerController {
-  ValueChanged<Set<String>> get resourceSelectionChanged;
-}
+import '../stores/orders_presentation.dart';
 
 /// Orders resource picker unit.
 ///
 /// The public entry point of the unit. It takes nothing from its parent — the
 /// value it renders and the handler it wires are obtained here.
-class OrdersResourcePicker extends StatelessWidget {
+///
+/// Laid out the way the statistics unit is: the units are inlined in `build`
+/// and marked by comment. This one has a controller where that one has none,
+/// because it takes input from the user.
+class OrdersResourcePicker extends ConsumerWidget {
   const OrdersResourcePicker({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    const selectedResources = {'local'};
+  Widget build(BuildContext context, WidgetRef ref) {
+    // presenter
+    //
+    // `SegmentedButton` works in sets of segment values, so this hands one over
+    // untouched rather than converting between a set and a flag on the way
+    // past.
+    final selectedResources = {
+      ref.watch(
+        ordersPresentationStore.select((entity) => entity.ordersResource),
+      ),
+    };
 
-    void resourceSelectionChanged(Set<String> selection) {}
+    // controller
+    //
+    // The button allows neither an empty selection nor several, so what it
+    // reports always holds exactly one.
+    void resourceSelectionChanged(Set<OrdersResource> selection) => ref
+        .read(ordersPresentationStore.notifier)
+        .setOrdersResource(selection.first);
 
-    return _UserInterface(
-      selectedResources: selectedResources,
-      resourceSelectionChanged: resourceSelectionChanged,
-    );
-  }
-}
-
-/// User interface unit of the orders resource picker.
-///
-/// Primitives in, layout out. It implements both contracts, so its parameters
-/// are the contracts rather than merely agreeing with them.
-class _UserInterface extends StatelessWidget
-    implements OrdersResourcePickerPresenter, OrdersResourcePickerController {
-  const _UserInterface({
-    required this.selectedResources,
-    required this.resourceSelectionChanged,
-  });
-
-  @override
-  final Set<String> selectedResources;
-
-  @override
-  final ValueChanged<Set<String>> resourceSelectionChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return SegmentedButton<String>(
+    // user interface
+    return SegmentedButton<OrdersResource>(
       segments: const [
-        ButtonSegment(value: 'local', label: Text('Local')),
-        ButtonSegment(value: 'remote', label: Text('Remote')),
+        ButtonSegment(value: OrdersResource.local, label: Text('Local')),
+        ButtonSegment(value: OrdersResource.remote, label: Text('Remote')),
       ],
       selected: selectedResources,
       onSelectionChanged: resourceSelectionChanged,
