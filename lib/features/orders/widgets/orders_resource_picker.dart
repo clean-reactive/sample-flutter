@@ -11,10 +11,7 @@ abstract interface class OrdersResourcePickerPresenter {
 }
 
 abstract interface class OrdersResourcePickerController {
-  /// Null when the action is unavailable. The user interface binds it straight
-  /// to the control, which Flutter renders disabled for a null handler, so the
-  /// unit carries no logic of its own.
-  ValueChanged<Set<String>>? get resourceSelectionChanged;
+  ValueChanged<Set<String>> get resourceSelectionChanged;
 }
 
 /// Orders resource picker unit.
@@ -52,7 +49,7 @@ class _UserInterface extends StatelessWidget
   final Set<String> selectedResources;
 
   @override
-  final ValueChanged<Set<String>>? resourceSelectionChanged;
+  final ValueChanged<Set<String>> resourceSelectionChanged;
 
   @override
   Widget build(BuildContext context) {

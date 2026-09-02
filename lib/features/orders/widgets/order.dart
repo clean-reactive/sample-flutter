@@ -12,13 +12,11 @@ abstract interface class OrderPresenter {
   String get userId;
   String get summaryLabel;
   List<String> get itemIds;
+  bool get isDeleteOrderButtonDisabled;
 }
 
 abstract interface class OrderController {
-  /// Null when the action is unavailable. The user interface binds it straight
-  /// to the button, which Flutter renders disabled for a null handler, so the
-  /// unit carries no logic of its own.
-  VoidCallback? get deleteOrderButtonPressed;
+  VoidCallback get deleteOrderButtonPressed;
 }
 
 /// Order unit.
@@ -40,6 +38,7 @@ class Order extends StatelessWidget {
 
     final userId = 'user-$orderId';
     final summaryLabel = '${orderItems.length} items';
+    const isDeleteOrderButtonDisabled = false;
 
     void deleteOrderButtonPressed() {}
 
@@ -48,6 +47,7 @@ class Order extends StatelessWidget {
       userId: userId,
       summaryLabel: summaryLabel,
       itemIds: orderItems,
+      isDeleteOrderButtonDisabled: isDeleteOrderButtonDisabled,
       deleteOrderButtonPressed: deleteOrderButtonPressed,
     );
   }
@@ -64,6 +64,7 @@ class _UserInterface extends StatelessWidget
     required this.userId,
     required this.summaryLabel,
     required this.itemIds,
+    required this.isDeleteOrderButtonDisabled,
     required this.deleteOrderButtonPressed,
   });
 
@@ -80,7 +81,10 @@ class _UserInterface extends StatelessWidget
   final List<String> itemIds;
 
   @override
-  final VoidCallback? deleteOrderButtonPressed;
+  final bool isDeleteOrderButtonDisabled;
+
+  @override
+  final VoidCallback deleteOrderButtonPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -111,7 +115,9 @@ class _UserInterface extends StatelessWidget
                 ),
                 const SizedBox(width: 16),
                 OutlinedButton(
-                  onPressed: deleteOrderButtonPressed,
+                  onPressed: isDeleteOrderButtonDisabled
+                      ? null
+                      : deleteOrderButtonPressed,
                   child: const Text('Delete Order'),
                 ),
               ],

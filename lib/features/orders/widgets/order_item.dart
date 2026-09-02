@@ -7,13 +7,11 @@ abstract interface class OrderItemPresenter {
   String get itemId;
   String get productId;
   String get productQuantity;
+  bool get isDeleteItemButtonDisabled;
 }
 
 abstract interface class OrderItemController {
-  /// Null when the action is unavailable. The user interface binds it straight
-  /// to the button, which Flutter renders disabled for a null handler, so the
-  /// unit carries no logic of its own.
-  VoidCallback? get deleteItemButtonPressed;
+  VoidCallback get deleteItemButtonPressed;
 }
 
 /// Order item unit.
@@ -32,6 +30,7 @@ class OrderItem extends StatelessWidget {
     final itemId = '$orderId-${this.itemId}';
     final productId = 'product-$orderId-${this.itemId}';
     const productQuantity = '3';
+    const isDeleteItemButtonDisabled = false;
 
     void deleteItemButtonPressed() {}
 
@@ -39,6 +38,7 @@ class OrderItem extends StatelessWidget {
       itemId: itemId,
       productId: productId,
       productQuantity: productQuantity,
+      isDeleteItemButtonDisabled: isDeleteItemButtonDisabled,
       deleteItemButtonPressed: deleteItemButtonPressed,
     );
   }
@@ -54,6 +54,7 @@ class _UserInterface extends StatelessWidget
     required this.itemId,
     required this.productId,
     required this.productQuantity,
+    required this.isDeleteItemButtonDisabled,
     required this.deleteItemButtonPressed,
   });
 
@@ -67,7 +68,10 @@ class _UserInterface extends StatelessWidget
   final String productQuantity;
 
   @override
-  final VoidCallback? deleteItemButtonPressed;
+  final bool isDeleteItemButtonDisabled;
+
+  @override
+  final VoidCallback deleteItemButtonPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +98,9 @@ class _UserInterface extends StatelessWidget
           ),
           const SizedBox(width: 12),
           OutlinedButton(
-            onPressed: deleteItemButtonPressed,
+            onPressed: isDeleteItemButtonDisabled
+                ? null
+                : deleteItemButtonPressed,
             child: const Text('Delete Item'),
           ),
         ],
