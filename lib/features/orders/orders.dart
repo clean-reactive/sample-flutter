@@ -1,4 +1,4 @@
-export 'widgets/order.dart';
+export 'widgets/order/order.dart';
 export 'widgets/order_item.dart';
 export 'widgets/orders.dart';
 export 'widgets/orders_resource_picker.dart';

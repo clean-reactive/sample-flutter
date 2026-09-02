@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../repositories/orders_repository.dart';
 import '../selectors/order_ids_selector.dart';
-import 'order.dart';
+import 'order/order.dart';
 import 'orders_resource_picker.dart';
 import 'orders_statistics.dart';
 import 'section_label.dart';
