@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../repositories/order_entities.dart';
-import '../order_item.dart';
+import '../order_item/order_item.dart';
 import '../section_label.dart';
 import 'order_presenter.dart';
 import 'order_types.dart';
