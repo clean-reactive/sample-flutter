@@ -1,75 +1,54 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../selectors/orders_selector.dart';
+import '../selectors/total_items_quantity_selector.dart';
 import 'pill.dart';
-
-/// Contract of the orders statistics unit.
-///
-/// It does two jobs. It fixes the parameters of the user interface unit, which
-/// implements it — the parameter list cannot drift from the contract without
-/// failing to compile. And it types the presenter that supplies those values,
-/// so both ends of the read path are held to the same declaration.
-///
-/// It carries no observability of its own. How a presenter notices a change
-/// and how the widget rebuilds are the lookup's concern, which leaves every
-/// implementation free to satisfy this the way it likes.
-abstract interface class OrdersStatisticsPresenter {
-  String get usersCount;
-  String get ordersCount;
-  String get itemsCount;
-  String get totalItemsQuantity;
-}
 
 /// Orders statistics unit.
 ///
 /// The public entry point of the unit. It takes nothing from its parent — the
 /// values it renders are obtained here, so a caller only places the widget.
-class OrdersStatistics extends StatelessWidget {
+///
+/// Every unit of the read path the feature owns is inlined in `build` and
+/// marked by comment: the entities arrive through the repository, the presenter
+/// projects and formats them, and the user interface lays them out. That is the
+/// shape a feature starts in. Each earns a file of its own when something asks
+/// for it — a contract worth holding both ends to, a layout worth rendering
+/// without a container, a projection a second unit wants — and not before.
+///
+/// The repository stays outside because it is shared and owns the read.
+class OrdersStatistics extends ConsumerWidget {
   const OrdersStatistics({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    const usersCount = '2';
-    const ordersCount = '2';
-    const itemsCount = '3';
-    const totalItemsQuantity = '7';
-
-    return const _UserInterface(
-      usersCount: usersCount,
-      ordersCount: ordersCount,
-      itemsCount: itemsCount,
-      totalItemsQuantity: totalItemsQuantity,
+  Widget build(BuildContext context, WidgetRef ref) {
+    // presenter
+    //
+    // The entities arrive through `ordersSelector`, which is where the absent
+    // case is answered.
+    //
+    // Each projection is watched through `select`, so this unit rebuilds only
+    // when a value it renders has changed — not merely because the orders did.
+    // It is also the form a selector starts in: `totalItemsQuantitySelector`
+    // left this list that way, moving its lambda without rewriting it.
+    final usersCount = ref.watch(
+      ordersSelector.select(
+        (orders) => '${orders.map((order) => order.userId).toSet().length}',
+      ),
     );
-  }
-}
+    final ordersCount = ref.watch(
+      ordersSelector.select((orders) => '${orders.length}'),
+    );
+    final itemsCount = ref.watch(
+      ordersSelector.select(
+        (orders) =>
+            '${orders.fold<int>(0, (count, order) => count + order.itemEntities.length)}',
+      ),
+    );
+    final totalItemsQuantity = '${ref.watch(totalItemsQuantitySelector)}';
 
-/// User interface unit of the orders statistics.
-///
-/// Primitives in, layout out. It implements `OrdersStatisticsPresenter`, so
-/// its parameters are the contract rather than merely agreeing with it. It
-/// takes no input from the user, so it has no controller.
-class _UserInterface extends StatelessWidget
-    implements OrdersStatisticsPresenter {
-  const _UserInterface({
-    required this.usersCount,
-    required this.ordersCount,
-    required this.itemsCount,
-    required this.totalItemsQuantity,
-  });
-
-  @override
-  final String usersCount;
-
-  @override
-  final String ordersCount;
-
-  @override
-  final String itemsCount;
-
-  @override
-  final String totalItemsQuantity;
-
-  @override
-  Widget build(BuildContext context) {
+    // user interface
     return Wrap(
       spacing: 8,
       runSpacing: 8,
