@@ -20,7 +20,7 @@ const seedFixture = [
 void main() {
   group('InMemoryOrdersService', () {
     test('serves the orders it holds', () async {
-      const service = InMemoryOrdersService(
+      final service = InMemoryOrdersService(
         orders: seedFixture,
         latency: Duration.zero,
       );
@@ -29,7 +29,7 @@ void main() {
     });
 
     test('holds orders unless it is given others', () async {
-      const service = InMemoryOrdersService(latency: Duration.zero);
+      final service = InMemoryOrdersService(latency: Duration.zero);
 
       expect(await service.getOrders(), isNotEmpty);
     });

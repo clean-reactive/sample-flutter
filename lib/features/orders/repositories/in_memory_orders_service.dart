@@ -6,10 +6,10 @@ import 'orders_gateway.dart';
 /// It serves orders it holds in memory, which is what makes the feature
 /// runnable with no service behind it.
 class InMemoryOrdersService implements OrdersGateway {
-  const InMemoryOrdersService({
-    this.orders = localOrders,
+  InMemoryOrdersService({
+    List<OrderEntity>? orders,
     this.latency = const Duration(seconds: 1),
-  });
+  }) : orders = orders ?? localOrders;
 
   /// Orders this instance serves.
   final List<OrderEntity> orders;
@@ -28,48 +28,30 @@ class InMemoryOrdersService implements OrdersGateway {
 }
 
 /// Orders the local resource serves unless it is given others.
-const localOrders = [
-  OrderEntity(
-    id: OrderEntityId('order-8c41'),
-    userId: 'user-204',
-    itemEntities: [
-      ItemEntity(
-        id: ItemEntityId('item-1f0a'),
-        productId: 'product-77',
-        quantity: 3,
+final localOrders = makeOrderEntities();
+
+/// Builds [orderCount] orders holding [itemCount] items each.
+///
+/// Deterministic on purpose. A local resource that served different numbers on
+/// every run would make the values the feature renders unrepeatable, and those
+/// values are the thing worth looking at.
+///
+/// The users repeat while the orders do not, so the statistics unit has a user
+/// count that differs from its order count — two projections that would
+/// otherwise be impossible to tell apart.
+List<OrderEntity> makeOrderEntities({int orderCount = 3, int itemCount = 2}) =>
+    List.generate(
+      orderCount,
+      (order) => OrderEntity(
+        id: OrderEntityId('order-$order'),
+        userId: 'user-${order % 2}',
+        itemEntities: List.generate(
+          itemCount,
+          (item) => ItemEntity(
+            id: ItemEntityId('item-$order-$item'),
+            productId: 'product-$item',
+            quantity: item + 1,
+          ),
+        ),
       ),
-      ItemEntity(
-        id: ItemEntityId('item-2b93'),
-        productId: 'product-12',
-        quantity: 1,
-      ),
-    ],
-  ),
-  OrderEntity(
-    id: OrderEntityId('order-d5e7'),
-    userId: 'user-511',
-    itemEntities: [
-      ItemEntity(
-        id: ItemEntityId('item-3c48'),
-        productId: 'product-05',
-        quantity: 4,
-      ),
-    ],
-  ),
-  OrderEntity(
-    id: OrderEntityId('order-a962'),
-    userId: 'user-204',
-    itemEntities: [
-      ItemEntity(
-        id: ItemEntityId('item-4d1b'),
-        productId: 'product-77',
-        quantity: 2,
-      ),
-      ItemEntity(
-        id: ItemEntityId('item-5e60'),
-        productId: 'product-33',
-        quantity: 6,
-      ),
-    ],
-  ),
-];
+    );
