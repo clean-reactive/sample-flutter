@@ -1,6 +1,7 @@
 import 'package:cleanreactive/features/orders/repositories/order_entities.dart';
 import 'package:cleanreactive/features/orders/repositories/orders_gateway.dart';
 import 'package:cleanreactive/features/orders/repositories/orders_repository.dart';
+import 'package:cleanreactive/features/orders/repositories/orders_service.dart';
 import 'package:cleanreactive/features/orders/selectors/order_ids_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,6 +27,16 @@ class ScriptedGateway implements OrdersGateway {
         ),
     ];
   }
+
+  // The selectors under test only read. Writing through this fake would say
+  // nothing about them, so it refuses rather than pretending.
+  @override
+  Future<void> deleteOrder(OrderEntityId orderId) =>
+      throw UnsupportedError('this fake only reads');
+
+  @override
+  Future<void> deleteItem(OrderEntityId orderId, ItemEntityId itemId) =>
+      throw UnsupportedError('this fake only reads');
 }
 
 ProviderContainer containerServing(List<List<String>> reads) =>
