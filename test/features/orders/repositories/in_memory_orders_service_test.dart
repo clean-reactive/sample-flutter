@@ -1,5 +1,6 @@
 import 'package:cleanreactive/features/orders/repositories/in_memory_orders_service.dart';
 import 'package:cleanreactive/features/orders/repositories/order_entities.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const seedFixture = [
@@ -20,16 +21,17 @@ const seedFixture = [
 void main() {
   group('InMemoryOrdersService', () {
     test('serves the orders it holds', () async {
-      final service = InMemoryOrdersService(
-        orders: seedFixture,
-        latency: Duration.zero,
-      );
+      final service = InMemoryOrdersService([
+        ...seedFixture,
+      ], latency: Duration.zero);
 
       expect(await service.getOrders(), seedFixture);
     });
 
-    test('holds orders unless it is given others', () async {
-      final service = InMemoryOrdersService(latency: Duration.zero);
+    test('is seeded with orders where it is built', () async {
+      final container = ProviderContainer.test();
+
+      final service = container.read(inMemoryOrdersServiceProvider);
 
       expect(await service.getOrders(), isNotEmpty);
     });

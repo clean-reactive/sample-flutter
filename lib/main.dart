@@ -7,8 +7,8 @@ void main() {
   // Composition root. Every unit that reads or writes shared state does so
   // through a provider, and this is the scope they are read from.
   //
-  // It overrides nothing: `ordersGatewayProvider` resolves through
-  // `makeOrdersService`, so the application runs on its defaults and a test is
-  // the only thing that needs to substitute anything.
+  // It overrides nothing: every provider resolves to a real unit on its own,
+  // so the application runs on its defaults and a test is the only thing that
+  // substitutes anything.
   runApp(const ProviderScope(child: App()));
 }
