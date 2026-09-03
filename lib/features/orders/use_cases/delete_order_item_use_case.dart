@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../repositories/order_entities.dart';
 import '../repositories/orders_repository.dart';
-import '../selectors/item_by_id_selector.dart';
 import '../selectors/order_by_id_selector.dart';
 
 /// Deletes an item — or the whole order, when the item is its last.
@@ -15,7 +14,9 @@ class DeleteOrderItemUseCase {
 
   final Ref _ref;
 
-  Future<void> execute(ItemIdentity identity) {
+  Future<void> execute(
+    ({OrderEntityId orderId, ItemEntityId itemId}) identity,
+  ) {
     final order = _ref.read(orderByIdSelector(identity.orderId));
     final isLastItem = order?.itemEntities.length == 1;
 
@@ -25,8 +26,9 @@ class DeleteOrderItemUseCase {
   Future<void> _deleteOrder(OrderEntityId orderId) =>
       deleteOrder(_ref, orderId);
 
-  Future<void> _deleteItem(ItemIdentity identity) =>
-      deleteOrderItem(_ref, identity.orderId, identity.itemId);
+  Future<void> _deleteItem(
+    ({OrderEntityId orderId, ItemEntityId itemId}) identity,
+  ) => deleteOrderItem(_ref, identity.orderId, identity.itemId);
 }
 
 final deleteOrderItemUseCase = Provider(DeleteOrderItemUseCase.new);

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../repositories/order_entities.dart';
 import '../../selectors/is_deleting_item_selector.dart';
 import '../../selectors/item_by_id_selector.dart';
 import 'order_item_types.dart';
@@ -15,18 +16,22 @@ import 'order_item_types.dart';
 /// [OrderItemPresenter.productQuantity] is formatted here. The entity carries a
 /// number; the contract asks for text.
 final orderItemPresenter = Provider.autoDispose
-    .family<OrderItemPresenter, ItemIdentity>((ref, identity) {
-      final productId = ref.watch(
-        itemByIdSelector(identity).select((item) => item?.productId ?? ''),
-      );
-      final quantity = ref.watch(
-        itemByIdSelector(identity).select((item) => item?.quantity ?? 0),
-      );
+    .family<OrderItemPresenter, ({OrderEntityId orderId, ItemEntityId itemId})>(
+      (ref, identity) {
+        final productId = ref.watch(
+          itemByIdSelector(identity).select((item) => item?.productId ?? ''),
+        );
+        final quantity = ref.watch(
+          itemByIdSelector(identity).select((item) => item?.quantity ?? 0),
+        );
 
-      return (
-        itemId: identity.itemId,
-        productId: productId,
-        productQuantity: '$quantity',
-        isDeleteItemButtonDisabled: ref.watch(isDeletingItemSelector(identity)),
-      );
-    });
+        return (
+          itemId: identity.itemId,
+          productId: productId,
+          productQuantity: '$quantity',
+          isDeleteItemButtonDisabled: ref.watch(
+            isDeletingItemSelector(identity),
+          ),
+        );
+      },
+    );
