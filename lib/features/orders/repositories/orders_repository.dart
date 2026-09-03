@@ -28,3 +28,25 @@ final ordersProvider = FutureProvider<List<OrderEntity>>(
 /// one; neither has to know about the other.
 final deleteOrderMutation = Mutation<void>();
 final deleteOrderItemMutation = Mutation<void>();
+
+/// Deletes an order and reads again.
+///
+/// The operation belongs to the repository because writing to the resource and
+/// refreshing what is held are both its business. A use case decides *whether*
+/// to call this; it does not decide how a delete reaches the resource.
+Future<void> deleteOrder(Ref ref, OrderEntityId orderId) =>
+    deleteOrderMutation(orderId).run(ref, (_) async {
+      await ref.read(ordersGatewayProvider).deleteOrder(orderId);
+      ref.invalidate(ordersProvider);
+    });
+
+/// Deletes one item of an order and reads again.
+Future<void> deleteOrderItem(
+  Ref ref,
+  OrderEntityId orderId,
+  ItemEntityId itemId,
+) => deleteOrderItemMutation((orderId: orderId, itemId: itemId))
+    .run(ref, (_) async {
+      await ref.read(ordersGatewayProvider).deleteItem(orderId, itemId);
+      ref.invalidate(ordersProvider);
+    });

@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../repositories/order_entities.dart';
 import '../repositories/orders_repository.dart';
-import '../repositories/orders_service.dart';
 import '../selectors/item_by_id_selector.dart';
 import '../selectors/order_by_id_selector.dart';
 
@@ -24,18 +23,10 @@ class DeleteOrderItemUseCase {
   }
 
   Future<void> _deleteOrder(OrderEntityId orderId) =>
-      deleteOrderMutation(orderId).run(_ref, (_) async {
-        await _ref.read(ordersGatewayProvider).deleteOrder(orderId);
-        _ref.invalidate(ordersProvider);
-      });
+      deleteOrder(_ref, orderId);
 
   Future<void> _deleteItem(ItemIdentity identity) =>
-      deleteOrderItemMutation(identity).run(_ref, (_) async {
-        await _ref
-            .read(ordersGatewayProvider)
-            .deleteItem(identity.orderId, identity.itemId);
-        _ref.invalidate(ordersProvider);
-      });
+      deleteOrderItem(_ref, identity.orderId, identity.itemId);
 }
 
 final deleteOrderItemUseCase = Provider(DeleteOrderItemUseCase.new);
