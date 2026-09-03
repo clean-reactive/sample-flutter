@@ -1,4 +1,3 @@
-import 'package:flutter_riverpod/experimental/mutation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../repositories/order_entities.dart';
@@ -6,14 +5,6 @@ import '../repositories/orders_repository.dart';
 import '../repositories/orders_service.dart';
 import '../selectors/item_by_id_selector.dart';
 import '../selectors/order_by_id_selector.dart';
-
-/// State of a delete, one per order and one per item.
-///
-/// Keyed, so each button knows about its own operation and no other. Riverpod
-/// compares keys with `==`, which is why a record works: two identities naming
-/// the same item are the same key.
-final deleteOrderMutation = Mutation<void>();
-final deleteOrderItemMutation = Mutation<void>();
 
 /// Deletes an item — or the whole order, when the item is its last.
 ///

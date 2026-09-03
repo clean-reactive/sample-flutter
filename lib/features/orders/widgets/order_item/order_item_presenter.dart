@@ -1,8 +1,7 @@
-import 'package:flutter_riverpod/experimental/mutation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../selectors/is_deleting_item_selector.dart';
 import '../../selectors/item_by_id_selector.dart';
-import '../../use_cases/delete_order_item_use_case.dart';
 import 'order_item_types.dart';
 
 /// Presenter of the order item unit.
@@ -24,21 +23,10 @@ final orderItemPresenter = Provider.autoDispose
         itemByIdSelector(identity).select((item) => item?.quantity ?? 0),
       );
 
-      // The item's own delete, and its order's — deleting the last item deletes
-      // the order, so this button can be the one that started either.
-      final isDeletingItem = ref.watch(
-        deleteOrderItemMutation(identity).select(_isPending),
-      );
-      final isDeletingOrder = ref.watch(
-        deleteOrderMutation(identity.orderId).select(_isPending),
-      );
-
       return (
         itemId: identity.itemId,
         productId: productId,
         productQuantity: '$quantity',
-        isDeleteItemButtonDisabled: isDeletingItem || isDeletingOrder,
+        isDeleteItemButtonDisabled: ref.watch(isDeletingItemSelector(identity)),
       );
     });
-
-bool _isPending(MutationState<void> state) => state is MutationPending;
