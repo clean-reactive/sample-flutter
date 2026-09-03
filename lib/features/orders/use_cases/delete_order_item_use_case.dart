@@ -1,0 +1,50 @@
+import 'package:flutter_riverpod/experimental/mutation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../repositories/order_entities.dart';
+import '../repositories/orders_repository.dart';
+import '../repositories/orders_service.dart';
+import '../selectors/item_by_id_selector.dart';
+import '../selectors/order_by_id_selector.dart';
+
+/// State of a delete, one per order and one per item.
+///
+/// Keyed, so each button knows about its own operation and no other. Riverpod
+/// compares keys with `==`, which is why a record works: two identities naming
+/// the same item are the same key.
+final deleteOrderMutation = Mutation<void>();
+final deleteOrderItemMutation = Mutation<void>();
+
+/// Deletes an item — or the whole order, when the item is its last.
+///
+/// That choice is the reason this unit exists. Neither the gateway nor the
+/// widget decides it: the gateway offers both operations and chooses neither,
+/// and the widget knows only that a button was pressed.
+class DeleteOrderItemUseCase {
+  DeleteOrderItemUseCase(this._ref);
+
+  final Ref _ref;
+
+  Future<void> execute(ItemIdentity identity) {
+    final order = _ref.read(orderByIdSelector(identity.orderId));
+    final isLastItem = order?.itemEntities.length == 1;
+
+    return isLastItem ? _deleteOrder(identity.orderId) : _deleteItem(identity);
+  }
+
+  Future<void> _deleteOrder(OrderEntityId orderId) =>
+      deleteOrderMutation(orderId).run(_ref, (_) async {
+        await _ref.read(ordersGatewayProvider).deleteOrder(orderId);
+        _ref.invalidate(ordersProvider);
+      });
+
+  Future<void> _deleteItem(ItemIdentity identity) =>
+      deleteOrderItemMutation(identity).run(_ref, (_) async {
+        await _ref
+            .read(ordersGatewayProvider)
+            .deleteItem(identity.orderId, identity.itemId);
+        _ref.invalidate(ordersProvider);
+      });
+}
+
+final deleteOrderItemUseCase = Provider(DeleteOrderItemUseCase.new);
