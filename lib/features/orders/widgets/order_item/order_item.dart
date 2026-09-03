@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'dart:async';
+
 import '../../repositories/order_entities.dart';
+import '../../use_cases/delete_order_item_use_case.dart';
 import '../field.dart';
 import 'order_item_presenter.dart';
 import 'order_item_types.dart';
@@ -22,17 +25,21 @@ class OrderItem extends ConsumerWidget {
     // The parameters arrive as `String`s, because that is what the parent's
     // contract carries. Naming them here is what lets the presenter ask for an
     // item rather than for any pair of strings.
-    final presenter = ref.watch(
-      orderItemPresenter((
-        orderId: OrderEntityId(orderId),
-        itemId: ItemEntityId(itemId),
-      )),
+    final identity = (
+      orderId: OrderEntityId(orderId),
+      itemId: ItemEntityId(itemId),
     );
+
+    final presenter = ref.watch(orderItemPresenter(identity));
 
     // controller
     //
-    // There is no write path yet, so its one member is stood in for.
-    void deleteItemButtonPressed() {}
+    // It converts a press into the use case's terms and nothing else. What
+    // deleting an item means — including that deleting the last one deletes the
+    // order — is decided there, not here.
+    void deleteItemButtonPressed() {
+      unawaited(ref.read(deleteOrderItemUseCase).execute(identity));
+    }
 
     return _UserInterface(
       presenter: presenter,
