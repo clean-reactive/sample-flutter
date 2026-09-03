@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/experimental/mutation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../repositories/orders_repository.dart';
+import 'is_deleting_order_selector.dart';
 import 'item_by_id_selector.dart';
 
 /// Whether a delete that would remove this item is in flight.
@@ -19,9 +20,7 @@ final isDeletingItemSelector = Provider.autoDispose.family<bool, ItemIdentity>((
   final isDeletingItem = ref.watch(
     deleteOrderItemMutation(identity).select(_isPending),
   );
-  final isDeletingOrder = ref.watch(
-    deleteOrderMutation(identity.orderId).select(_isPending),
-  );
+  final isDeletingOrder = ref.watch(isDeletingOrderSelector(identity.orderId));
 
   return isDeletingItem || isDeletingOrder;
 });
