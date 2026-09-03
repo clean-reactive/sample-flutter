@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../repositories/orders_repository.dart';
+import '../selectors/is_orders_mutating_selector.dart';
 import '../selectors/order_ids_selector.dart';
 import 'order/order.dart';
 import 'orders_resource_picker.dart';
@@ -37,21 +38,23 @@ class Orders extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // presenter
     //
-    // The status members come from the read itself rather than from the
-    // entities: a first read has nothing to show, a re-read still has the last
-    // orders on screen, and the two are worth telling apart.
-    final isProcessing = ref.watch(
-      ordersProvider.select((orders) => orders.isLoading),
-    );
-    final statusLabel = ref.watch(
+    // The status members come from the operations rather than the entities: a
+    // first read has nothing to show, a re-read still has the last orders on
+    // screen, and a write is neither. All three are worth telling apart.
+    final read = ref.watch(
       ordersProvider.select(
-        (orders) => switch (orders) {
-          _ when !orders.isLoading => 'idle',
-          _ when orders.hasValue => 'fetching',
-          _ => 'loading',
-        },
+        (orders) => (isLoading: orders.isLoading, hasValue: orders.hasValue),
       ),
     );
+    final isMutating = ref.watch(isOrdersMutatingSelector);
+
+    final isProcessing = read.isLoading || isMutating;
+    final statusLabel = switch ((read.isLoading, read.hasValue, isMutating)) {
+      (true, false, _) => 'loading',
+      (true, true, _) => 'fetching',
+      (false, _, true) => 'mutating',
+      _ => 'idle',
+    };
 
     // The selector holds the ids in a list that compares by contents, which is
     // what keeps an unchanged read from rebuilding this unit. The decision is
