@@ -6,9 +6,10 @@ import 'package:cleanreactive/features/orders/repositories/orders_service.dart';
 import 'package:cleanreactive/features/orders/selectors/orders_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
 import '../orders_factory.dart';
-import '../repositories/fake_orders_gateway.dart';
+import '../repositories/mock_orders_gateway.dart';
 
 /// The selector wired to the repository it reads from, with only the gateway
 /// stood in for.
@@ -16,8 +17,8 @@ import '../repositories/fake_orders_gateway.dart';
 /// What it answers is not arithmetic — it is what a read is doing: in flight,
 /// landed, failed, failed after landing. None of those exist below the
 /// repository, so the repository is real here and the resource is not.
-({ProviderContainer container, FakeOrdersGateway gateway}) wired() {
-  final gateway = FakeOrdersGateway();
+({ProviderContainer container, MockOrdersGateway gateway}) wired() {
+  final gateway = MockOrdersGateway();
   final container = ProviderContainer.test(
     overrides: [ordersGatewayProvider.overrideWithValue(gateway)],
     // Riverpod retries a failing provider on its own — ten times, 200ms
@@ -36,7 +37,7 @@ void main() {
   group('ordersSelector', () {
     test('holds no orders while the first read is in flight', () {
       final (:container, :gateway) = wired();
-      gateway.onGetOrders = () async => [makeOrder('order-1')];
+      when(gateway.getOrders).thenAnswer((_) async => [makeOrder('order-1')]);
 
       container.read(ordersProvider);
 
@@ -49,10 +50,9 @@ void main() {
 
     test('holds the orders a read landed with', () async {
       final (:container, :gateway) = wired();
-      gateway.onGetOrders = () async => [
-        makeOrder('order-1'),
-        makeOrder('order-2'),
-      ];
+      when(
+        gateway.getOrders,
+      ).thenAnswer((_) async => [makeOrder('order-1'), makeOrder('order-2')]);
 
       await container.read(ordersProvider.future);
 
@@ -61,7 +61,8 @@ void main() {
 
     test('holds no orders when the first read fails', () async {
       final (:container, :gateway) = wired();
-      gateway.onGetOrders = () async => throw Exception('no resource');
+      when(gateway.getOrders)
+          .thenAnswer((_) async => throw Exception('no resource'));
 
       await expectLater(container.read(ordersProvider.future), throwsException);
 
@@ -74,10 +75,10 @@ void main() {
 
     test('holds what a later read replaces it with', () async {
       final (:container, :gateway) = wired();
-      gateway.onGetOrders = () async => [makeOrder('order-1')];
+      when(gateway.getOrders).thenAnswer((_) async => [makeOrder('order-1')]);
       await container.read(ordersProvider.future);
 
-      gateway.onGetOrders = () async => [makeOrder('order-2')];
+      when(gateway.getOrders).thenAnswer((_) async => [makeOrder('order-2')]);
       container.invalidate(ordersProvider);
       await container.read(ordersProvider.future);
 
@@ -89,10 +90,11 @@ void main() {
 
     test('keeps the orders it had when a later read fails', () async {
       final (:container, :gateway) = wired();
-      gateway.onGetOrders = () async => [makeOrder('order-1')];
+      when(gateway.getOrders).thenAnswer((_) async => [makeOrder('order-1')]);
       await container.read(ordersProvider.future);
 
-      gateway.onGetOrders = () async => throw Exception('no resource');
+      when(gateway.getOrders)
+          .thenAnswer((_) async => throw Exception('no resource'));
       container.invalidate(ordersProvider);
       await expectLater(container.read(ordersProvider.future), throwsException);
 
@@ -105,13 +107,13 @@ void main() {
 
     test('keeps the orders it had while a later read is in flight', () async {
       final (:container, :gateway) = wired();
-      gateway.onGetOrders = () async => [makeOrder('order-1')];
+      when(gateway.getOrders).thenAnswer((_) async => [makeOrder('order-1')]);
       await container.read(ordersProvider.future);
 
       // held open, so there is a moment where a read is in flight over orders
       // that already landed — the state the feature calls fetching
       final refetch = Completer<List<OrderEntity>>();
-      gateway.onGetOrders = () => refetch.future;
+      when(gateway.getOrders).thenAnswer((_) => refetch.future);
       container.invalidate(ordersProvider);
       container.read(ordersProvider);
       await container.pump();

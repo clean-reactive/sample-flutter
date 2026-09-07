@@ -22,11 +22,8 @@ ItemEntity makeItem(
   String id, {
   String productId = 'product',
   int quantity = 1,
-}) => ItemEntity(
-  id: ItemEntityId(id),
-  productId: productId,
-  quantity: quantity,
-);
+}) =>
+    ItemEntity(id: ItemEntityId(id), productId: productId, quantity: quantity);
 
 /// An order, holding [items].
 ///
@@ -36,8 +33,4 @@ OrderEntity makeOrder(
   String id, {
   String userId = 'user-a',
   List<ItemEntity> items = const [],
-}) => OrderEntity(
-  id: OrderEntityId(id),
-  userId: userId,
-  itemEntities: items,
-);
+}) => OrderEntity(id: OrderEntityId(id), userId: userId, itemEntities: items);

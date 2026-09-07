@@ -7,15 +7,16 @@ import 'package:cleanreactive/features/orders/widgets/orders.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
-import '../repositories/fake_orders_gateway.dart';
+import '../repositories/mock_orders_gateway.dart';
 
 /// The feature with only its resource stood in for.
 ///
 /// Everything between the gateway and the screen is real — repository,
 /// selectors, presenters — because what a scenario checks is that they add up
 /// to what a user sees.
-Future<void> pumpOrders(WidgetTester tester, FakeOrdersGateway gateway) =>
+Future<void> pumpOrders(WidgetTester tester, MockOrdersGateway gateway) =>
     tester.pumpWidget(
       ProviderScope(
         overrides: [ordersGatewayProvider.overrideWithValue(gateway)],
@@ -29,10 +30,10 @@ void main() {
   testWidgets('a first read shows it is loading, and no orders', (
     tester,
   ) async {
-    final gateway = FakeOrdersGateway();
+    final gateway = MockOrdersGateway();
 
     final read = Completer<List<OrderEntity>>();
-    gateway.onGetOrders = () => read.future;
+    when(gateway.getOrders).thenAnswer((_) => read.future);
 
     await pumpOrders(tester, gateway);
     await tester.pump();

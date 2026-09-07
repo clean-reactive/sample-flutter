@@ -6,9 +6,10 @@ import 'package:cleanreactive/features/orders/repositories/orders_service.dart';
 import 'package:cleanreactive/features/orders/selectors/order_ids_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
 import '../orders_factory.dart';
-import '../repositories/fake_orders_gateway.dart';
+import '../repositories/mock_orders_gateway.dart';
 
 /// The selector wired to the repository it reads through, with only the
 /// gateway stood in for.
@@ -16,8 +17,8 @@ import '../repositories/fake_orders_gateway.dart';
 /// Every read builds its orders afresh, the way a real resource answers, so
 /// two reads of the same ids arrive as equal contents in different objects —
 /// which is the whole reason this selector carries an [IList].
-({ProviderContainer container, FakeOrdersGateway gateway}) wired() {
-  final gateway = FakeOrdersGateway();
+({ProviderContainer container, MockOrdersGateway gateway}) wired() {
+  final gateway = MockOrdersGateway();
   final container = ProviderContainer.test(
     overrides: [ordersGatewayProvider.overrideWithValue(gateway)],
     // Riverpod retries a failing provider on its own — ten times, 200ms
@@ -28,15 +29,16 @@ import '../repositories/fake_orders_gateway.dart';
   return (container: container, gateway: gateway);
 }
 
-/// Serves [ids] as orders, freshly built on every read.
-Future<List<OrderEntity>> Function() serving(List<String> ids) =>
-    () async => [for (final id in ids) makeOrder(id)];
+/// Has [gateway] serve [ids] as orders, freshly built on every read.
+void serving(MockOrdersGateway gateway, List<String> ids) =>
+    when(gateway.getOrders)
+        .thenAnswer((_) async => [for (final id in ids) makeOrder(id)]);
 
 void main() {
   group('orderIdsSelector', () {
     test('reports no ids before a read lands', () {
       final (:container, :gateway) = wired();
-      gateway.onGetOrders = serving(['order-1']);
+      serving(gateway, ['order-1']);
 
       container.read(ordersProvider);
 
@@ -45,7 +47,7 @@ void main() {
 
     test('reports the ids of the orders read, in the order read', () async {
       final (:container, :gateway) = wired();
-      gateway.onGetOrders = serving(['order-2', 'order-1']);
+      serving(gateway, ['order-2', 'order-1']);
 
       await container.read(ordersProvider.future);
 
@@ -54,7 +56,8 @@ void main() {
 
     test('reports no ids when the first read fails', () async {
       final (:container, :gateway) = wired();
-      gateway.onGetOrders = () async => throw Exception('no resource');
+      when(gateway.getOrders)
+          .thenAnswer((_) async => throw Exception('no resource'));
 
       await expectLater(container.read(ordersProvider.future), throwsException);
 
@@ -63,11 +66,11 @@ void main() {
 
     test('keeps the ids while a later read is in flight', () async {
       final (:container, :gateway) = wired();
-      gateway.onGetOrders = serving(['order-1']);
+      serving(gateway, ['order-1']);
       await container.read(ordersProvider.future);
 
       final refetch = Completer<List<OrderEntity>>();
-      gateway.onGetOrders = () => refetch.future;
+      when(gateway.getOrders).thenAnswer((_) => refetch.future);
       container.invalidate(ordersProvider);
       container.read(ordersProvider);
       await container.pump();
@@ -84,10 +87,11 @@ void main() {
 
     test('keeps the ids when a later read fails', () async {
       final (:container, :gateway) = wired();
-      gateway.onGetOrders = serving(['order-1']);
+      serving(gateway, ['order-1']);
       await container.read(ordersProvider.future);
 
-      gateway.onGetOrders = () async => throw Exception('no resource');
+      when(gateway.getOrders)
+          .thenAnswer((_) async => throw Exception('no resource'));
       container.invalidate(ordersProvider);
       await expectLater(container.read(ordersProvider.future), throwsException);
 
@@ -96,7 +100,7 @@ void main() {
 
     test('announces nothing when a read returns the same ids', () async {
       final (:container, :gateway) = wired();
-      gateway.onGetOrders = serving(['order-1', 'order-2']);
+      serving(gateway, ['order-1', 'order-2']);
       var announcements = 0;
       container.listen(orderIdsSelector, (_, _) => announcements++);
 
@@ -117,7 +121,7 @@ void main() {
 
     test('announces the new ids when they change', () async {
       final (:container, :gateway) = wired();
-      gateway.onGetOrders = serving(['order-1', 'order-2']);
+      serving(gateway, ['order-1', 'order-2']);
       var announcements = 0;
       container.listen(orderIdsSelector, (_, _) => announcements++);
 
@@ -125,7 +129,7 @@ void main() {
       await container.pump();
       final afterLoad = announcements;
 
-      gateway.onGetOrders = serving(['order-1', 'order-3']);
+      serving(gateway, ['order-1', 'order-3']);
       container.invalidate(ordersProvider);
       await container.read(ordersProvider.future);
       await container.pump();
