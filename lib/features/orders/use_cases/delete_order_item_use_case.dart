@@ -16,11 +16,19 @@ class DeleteOrderItemUseCase {
 
   Future<void> execute(
     ({OrderEntityId orderId, ItemEntityId itemId}) identity,
-  ) {
+  ) async {
     final order = _ref.read(orderByIdSelector(identity.orderId));
     final isLastItem = order?.itemEntities.length == 1;
 
-    return isLastItem ? _deleteOrder(identity.orderId) : _deleteItem(identity);
+    try {
+      await (isLastItem
+          ? _deleteOrder(identity.orderId)
+          : _deleteItem(identity));
+    } on Object catch (_) {
+      // Both writes stop here, for the reason `DeleteOrderUseCase` stops one:
+      // the failure is already the mutation's state, and the controller that
+      // started this is not waiting to be told.
+    }
   }
 
   Future<void> _deleteOrder(OrderEntityId orderId) =>

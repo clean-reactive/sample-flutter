@@ -64,6 +64,26 @@ String statistic(WidgetTester tester, String label) => tester
     )
     .value;
 
+/// The delete button on the card standing for [orderId].
+///
+/// Found through the card rather than by its text: every order on screen offers
+/// the same button, and a text finder would match all of them.
+Finder deleteOrderButton(String orderId) => find.descendant(
+  of: find.byWidgetPredicate(
+    (widget) => widget is Order && widget.orderId == orderId,
+  ),
+  matching: find.widgetWithText(OutlinedButton, 'Delete Order'),
+);
+
+/// The orders on screen, in the order they are laid out.
+///
+/// Counting the cards would say how many survived a delete; this says which,
+/// and where — an order put back belongs where it was, not at the end.
+List<String> ordersOnScreen(WidgetTester tester) => tester
+    .widgetList<Order>(find.byType(Order))
+    .map((order) => order.orderId)
+    .toList();
+
 void main() {
   testWidgets(
     'shows a loading indicator and no orders while the first read is in flight',
@@ -108,5 +128,96 @@ void main() {
     expect(statistic(tester, 'orders'), '3');
     expect(statistic(tester, 'items'), '4');
     expect(statistic(tester, 'qty'), '14');
+  });
+
+  testWidgets('takes a deleted order off the screen before the write lands', (
+    tester,
+  ) async {
+    final gateway = MockOrdersGateway();
+
+    // What the resource answers with, and what it answers with once the delete
+    // has landed. The read after a write is the resource agreeing with the
+    // screen, not what puts the order there — so it must not be the thing that
+    // removes it either.
+    var held = ordersMock;
+    when(gateway.getOrders).thenAnswer((_) async => held);
+
+    final delete = Completer<void>();
+    when(() => gateway.deleteOrder(const OrderEntityId('order-2')))
+        .thenAnswer((_) => delete.future);
+
+    await pumpOrders(tester, gateway);
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(deleteOrderButton('order-2'));
+    await tester.tap(deleteOrderButton('order-2'));
+    await tester.pump();
+
+    // the order is off the screen while its delete is still in flight
+    expect(delete.isCompleted, isFalse);
+    expect(find.text('mutating'), findsOneWidget);
+    expect(ordersOnScreen(tester), ['order-1', 'order-3']);
+
+    // and every statistic counts as though it were already gone: order-2 was
+    // user-b's only order, and carried the one item of quantity three
+    expect(statistic(tester, 'users'), '1');
+    expect(statistic(tester, 'orders'), '2');
+    expect(statistic(tester, 'items'), '3');
+    expect(statistic(tester, 'qty'), '11');
+
+    // when the write lands, the read that follows agrees with what is shown —
+    // nothing on screen moves
+    held = ordersMock
+        .where((order) => order.id != const OrderEntityId('order-2'))
+        .toList();
+    delete.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.text('idle'), findsOneWidget);
+    expect(ordersOnScreen(tester), ['order-1', 'order-3']);
+    expect(statistic(tester, 'orders'), '2');
+  });
+
+  testWidgets('puts a deleted order back when the write fails', (tester) async {
+    final gateway = MockOrdersGateway();
+
+    // The resource still holds all three throughout: the write failed, so
+    // nothing was ever removed there. What the screen shows in the meantime is
+    // the feature's own doing, and taking it back is too.
+    when(gateway.getOrders).thenAnswer((_) async => ordersMock);
+
+    final delete = Completer<void>();
+    when(() => gateway.deleteOrder(const OrderEntityId('order-2')))
+        .thenAnswer((_) => delete.future);
+
+    await pumpOrders(tester, gateway);
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(deleteOrderButton('order-2'));
+    await tester.tap(deleteOrderButton('order-2'));
+    await tester.pump();
+
+    // taken away first — a restore only says something if something went
+    expect(ordersOnScreen(tester), ['order-1', 'order-3']);
+
+    delete.completeError(Exception('the resource refused the delete'));
+    await tester.pumpAndSettle();
+
+    // back where it was, between the two that never moved
+    expect(ordersOnScreen(tester), ['order-1', 'order-2', 'order-3']);
+    expect(find.text('User user-b'), findsOneWidget);
+
+    // and counted again, every statistic as it was before the press
+    expect(statistic(tester, 'users'), '2');
+    expect(statistic(tester, 'orders'), '3');
+    expect(statistic(tester, 'items'), '4');
+    expect(statistic(tester, 'qty'), '14');
+
+    // nothing is in flight any more, and the order can be deleted again
+    expect(find.text('idle'), findsOneWidget);
+    expect(
+      tester.widget<OutlinedButton>(deleteOrderButton('order-2')).onPressed,
+      isNotNull,
+    );
   });
 }
