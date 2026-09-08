@@ -16,27 +16,39 @@ class DeleteOrderItemUseCase {
 
   Future<void> execute(
     ({OrderEntityId orderId, ItemEntityId itemId}) identity,
-  ) async {
+  ) {
     final order = _ref.read(orderByIdSelector(identity.orderId));
     final isLastItem = order?.itemEntities.length == 1;
 
+    if (isLastItem) return _deleteOrder(identity.orderId);
+
+    return _deleteItem(identity);
+  }
+
+  /// Each write stops where it is run, for the reason `DeleteOrderUseCase`
+  /// stops one: the failure is already the mutation's state and the repository
+  /// has already put back what it took, so there is nothing left to decide —
+  /// and the controller that started this is not waiting to be told. Caught
+  /// here rather than around the choice above, so what this unit exists to
+  /// decide reads as the one line it is.
+  Future<void> _deleteOrder(OrderEntityId orderId) async {
     try {
-      await (isLastItem
-          ? _deleteOrder(identity.orderId)
-          : _deleteItem(identity));
+      await deleteOrder(_ref, orderId);
     } on Object catch (_) {
-      // Both writes stop here, for the reason `DeleteOrderUseCase` stops one:
-      // the failure is already the mutation's state, and the controller that
-      // started this is not waiting to be told.
+      // as above
     }
   }
 
-  Future<void> _deleteOrder(OrderEntityId orderId) =>
-      deleteOrder(_ref, orderId);
-
+  /// See [_deleteOrder].
   Future<void> _deleteItem(
     ({OrderEntityId orderId, ItemEntityId itemId}) identity,
-  ) => deleteOrderItem(_ref, identity.orderId, identity.itemId);
+  ) async {
+    try {
+      await deleteOrderItem(_ref, identity.orderId, identity.itemId);
+    } on Object catch (_) {
+      // as above
+    }
+  }
 }
 
 final deleteOrderItemUseCase = Provider(DeleteOrderItemUseCase.new);

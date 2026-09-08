@@ -20,6 +20,14 @@ import 'orders_service.dart';
 /// a different screen from the one the user was looking at.
 typedef RemovedOrder = ({int index, OrderEntity order});
 
+/// An item taken out of the order that held it, and the place it was taken
+/// from.
+///
+/// It names the order rather than where the order sat, because the order may
+/// have moved by the time the item goes back — and may be gone, which is an
+/// answer too.
+typedef RemovedItem = ({OrderEntityId orderId, int index, ItemEntity item});
+
 /// Orders the repository holds. Absent until a read succeeds.
 ///
 /// A notifier rather than a bare read, because the repository writes to what it
@@ -60,6 +68,69 @@ class HeldOrders extends AsyncNotifier<List<OrderEntity>> {
       [...held]..insert(min(removed.index, held.length), removed.order),
     );
   }
+
+  /// Takes [identity] out of the order that holds it, and answers with what was
+  /// taken.
+  ///
+  /// Answers with nothing when no such order or no such item is held.
+  RemovedItem? removeItem(
+    ({OrderEntityId orderId, ItemEntityId itemId}) identity,
+  ) {
+    final held = state.value ?? const <OrderEntity>[];
+    final orderIndex = held.indexWhere((order) => order.id == identity.orderId);
+    if (orderIndex < 0) return null;
+
+    final order = held[orderIndex];
+    final index = order.itemEntities.indexWhere(
+      (item) => item.id == identity.itemId,
+    );
+    if (index < 0) return null;
+
+    state = AsyncData(
+      [...held]
+        ..[orderIndex] = _withItems(
+          order,
+          [...order.itemEntities]..removeAt(index),
+        ),
+    );
+    return (
+      orderId: identity.orderId,
+      index: index,
+      item: order.itemEntities[index],
+    );
+  }
+
+  /// Puts [removed] back where it was, and does nothing when nothing was taken.
+  ///
+  /// Nothing to do either when the order it belonged to is no longer held: its
+  /// own delete landed while this one was in flight, and an order that is gone
+  /// takes its items with it.
+  void restoreItem(RemovedItem? removed) {
+    if (removed == null) return;
+
+    final held = state.value ?? const <OrderEntity>[];
+    final orderIndex = held.indexWhere((order) => order.id == removed.orderId);
+    if (orderIndex < 0) return;
+
+    final order = held[orderIndex];
+    state = AsyncData(
+      [...held]
+        ..[orderIndex] = _withItems(
+          order,
+          [...order.itemEntities]..insert(
+            min(removed.index, order.itemEntities.length),
+            removed.item,
+          ),
+        ),
+    );
+  }
+
+  /// [order] with [items] in place of the ones it holds.
+  ///
+  /// An entity is not changed but replaced: what is held is a new list of new
+  /// orders, so a selector comparing what it was given can tell that it has.
+  OrderEntity _withItems(OrderEntity order, List<ItemEntity> items) =>
+      OrderEntity(id: order.id, userId: order.userId, itemEntities: items);
 }
 
 final ordersProvider = AsyncNotifierProvider<HeldOrders, List<OrderEntity>>(
@@ -126,18 +197,29 @@ Future<void> deleteOrder(Ref ref, OrderEntityId orderId) =>
       );
     });
 
-/// Deletes one item of an order and reads again.
+/// Deletes one item of an order, optimistically, and reads again.
+///
+/// The order stays; the item leaves it before the gateway is called, so the
+/// card the user is looking at answers the press rather than the round trip.
+/// What the resource says afterwards either agrees, or refuses and the item
+/// goes back into the order it came from.
 Future<void> deleteOrderItem(
   Ref ref,
   OrderEntityId orderId,
   ItemEntityId itemId,
-) => deleteOrderItemMutation((orderId: orderId, itemId: itemId)).run(
-  ref,
-  (_) => _write(
-    ref,
-    () => ref.read(ordersGatewayProvider).deleteItem(orderId, itemId),
-  ),
-);
+) {
+  final identity = (orderId: orderId, itemId: itemId);
+
+  return deleteOrderItemMutation(identity).run(ref, (tsx) {
+    final removed = tsx.get(ordersProvider.notifier).removeItem(identity);
+
+    return _write(
+      ref,
+      () => ref.read(ordersGatewayProvider).deleteItem(orderId, itemId),
+      undo: () => ref.read(ordersProvider.notifier).restoreItem(removed),
+    );
+  });
+}
 
 /// Runs a write, counts it while it runs, and reads again when it lands.
 ///
@@ -145,12 +227,12 @@ Future<void> deleteOrderItem(
 /// every operation refreshes — neither by remembering to.
 ///
 /// [undo] takes back what the write assumed before it ran. It is called when
-/// the operation fails and never otherwise, and is absent for a write that
-/// assumed nothing.
+/// the operation fails and never otherwise. Every write here assumes something,
+/// so every write says how to take it back.
 Future<void> _write(
   Ref ref,
   Future<void> Function() operation, {
-  void Function()? undo,
+  required void Function() undo,
 }) async {
   final inFlight = ref.read(writesInFlight.notifier);
   inFlight.started();
@@ -158,7 +240,7 @@ Future<void> _write(
     await operation();
     ref.invalidate(ordersProvider);
   } catch (_) {
-    undo?.call();
+    undo();
     rethrow;
   } finally {
     inFlight.finished();

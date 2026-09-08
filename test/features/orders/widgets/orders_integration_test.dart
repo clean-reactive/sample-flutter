@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cleanreactive/features/orders/repositories/order_entities.dart';
 import 'package:cleanreactive/features/orders/repositories/orders_service.dart';
 import 'package:cleanreactive/features/orders/widgets/order/order.dart';
+import 'package:cleanreactive/features/orders/widgets/order_item/order_item.dart';
 import 'package:cleanreactive/features/orders/widgets/orders.dart';
 import 'package:cleanreactive/features/orders/widgets/pill.dart';
 import 'package:flutter/material.dart';
@@ -83,6 +84,47 @@ List<String> ordersOnScreen(WidgetTester tester) => tester
     .widgetList<Order>(find.byType(Order))
     .map((order) => order.orderId)
     .toList();
+
+/// The delete button on the row standing for [itemId] of [orderId].
+Finder deleteItemButton(String orderId, String itemId) => find.descendant(
+  of: find.byWidgetPredicate(
+    (widget) =>
+        widget is OrderItem &&
+        widget.orderId == orderId &&
+        widget.itemId == itemId,
+  ),
+  matching: find.widgetWithText(OutlinedButton, 'Delete Item'),
+);
+
+/// The items on screen in the card for [orderId], in the order they are laid
+/// out.
+///
+/// Empty until the card is opened: an order keeps its items behind a tile, and
+/// what is not built is not on screen.
+List<String> itemsOnScreen(WidgetTester tester, String orderId) => tester
+    .widgetList<OrderItem>(
+      find.descendant(
+        of: find.byWidgetPredicate(
+          (widget) => widget is Order && widget.orderId == orderId,
+        ),
+        matching: find.byType(OrderItem),
+      ),
+    )
+    .map((item) => item.itemId)
+    .toList();
+
+/// Opens the card for [orderId], so its items are rendered.
+Future<void> openOrder(WidgetTester tester, String orderId) async {
+  await tester.tap(
+    find.descendant(
+      of: find.byWidgetPredicate(
+        (widget) => widget is Order && widget.orderId == orderId,
+      ),
+      matching: find.byType(ExpansionTile),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
 
 void main() {
   testWidgets(
@@ -217,6 +259,114 @@ void main() {
     expect(find.text('idle'), findsOneWidget);
     expect(
       tester.widget<OutlinedButton>(deleteOrderButton('order-2')).onPressed,
+      isNotNull,
+    );
+  });
+
+  testWidgets('takes a deleted item off the screen before the write lands', (
+    tester,
+  ) async {
+    final gateway = MockOrdersGateway();
+
+    var held = ordersMock;
+    when(gateway.getOrders).thenAnswer((_) async => held);
+
+    final delete = Completer<void>();
+    when(
+      () => gateway.deleteItem(
+        const OrderEntityId('order-1'),
+        const ItemEntityId('item-1'),
+      ),
+    ).thenAnswer((_) => delete.future);
+
+    await pumpOrders(tester, gateway);
+    await tester.pumpAndSettle();
+
+    await openOrder(tester, 'order-1');
+    expect(itemsOnScreen(tester, 'order-1'), ['item-1', 'item-2']);
+
+    await tester.ensureVisible(deleteItemButton('order-1', 'item-1'));
+    await tester.tap(deleteItemButton('order-1', 'item-1'));
+    await tester.pump();
+
+    // the item is off the screen while its delete is still in flight
+    expect(delete.isCompleted, isFalse);
+    expect(find.text('mutating'), findsOneWidget);
+    expect(itemsOnScreen(tester, 'order-1'), ['item-2']);
+
+    // its order stays — it held another item — and says how many are left
+    expect(ordersOnScreen(tester), ['order-1', 'order-2', 'order-3']);
+    expect(find.text('1 item'), findsNWidgets(3));
+
+    // counted gone as well: one item fewer, and its two off the quantity
+    expect(statistic(tester, 'users'), '2');
+    expect(statistic(tester, 'orders'), '3');
+    expect(statistic(tester, 'items'), '3');
+    expect(statistic(tester, 'qty'), '12');
+
+    // when the write lands, the read that follows agrees with what is shown
+    held = [
+      makeOrder(
+        'order-1',
+        userId: 'user-a',
+        items: [makeItem('item-2', quantity: 5)],
+      ),
+      ...ordersMock.skip(1),
+    ];
+    delete.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.text('idle'), findsOneWidget);
+    expect(itemsOnScreen(tester, 'order-1'), ['item-2']);
+    expect(statistic(tester, 'items'), '3');
+  });
+
+  testWidgets('puts a deleted item back when the write fails', (tester) async {
+    final gateway = MockOrdersGateway();
+
+    // The resource holds all four items throughout: the write failed, so
+    // nothing was ever removed there.
+    when(gateway.getOrders).thenAnswer((_) async => ordersMock);
+
+    final delete = Completer<void>();
+    when(
+      () => gateway.deleteItem(
+        const OrderEntityId('order-1'),
+        const ItemEntityId('item-1'),
+      ),
+    ).thenAnswer((_) => delete.future);
+
+    await pumpOrders(tester, gateway);
+    await tester.pumpAndSettle();
+
+    await openOrder(tester, 'order-1');
+
+    await tester.ensureVisible(deleteItemButton('order-1', 'item-1'));
+    await tester.tap(deleteItemButton('order-1', 'item-1'));
+    await tester.pump();
+
+    // taken away first — a restore only says something if something went
+    expect(itemsOnScreen(tester, 'order-1'), ['item-2']);
+
+    delete.completeError(Exception('the resource refused the delete'));
+    await tester.pumpAndSettle();
+
+    // back where it was, ahead of the item that never moved
+    expect(itemsOnScreen(tester, 'order-1'), ['item-1', 'item-2']);
+    expect(find.text('2 items'), findsOneWidget);
+
+    // and counted again, every statistic as it was before the press
+    expect(statistic(tester, 'users'), '2');
+    expect(statistic(tester, 'orders'), '3');
+    expect(statistic(tester, 'items'), '4');
+    expect(statistic(tester, 'qty'), '14');
+
+    // nothing is in flight any more, and the item can be deleted again
+    expect(find.text('idle'), findsOneWidget);
+    expect(
+      tester
+          .widget<OutlinedButton>(deleteItemButton('order-1', 'item-1'))
+          .onPressed,
       isNotNull,
     );
   });
