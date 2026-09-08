@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:cleanreactive/features/orders/repositories/order_entities.dart';
 import 'package:cleanreactive/features/orders/repositories/orders_repository.dart';
-import 'package:cleanreactive/features/orders/repositories/orders_service.dart';
+import 'package:cleanreactive/features/orders/repositories/orders_service/orders_service.dart';
 import 'package:cleanreactive/features/orders/selectors/order_ids_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,7 +20,7 @@ import '../repositories/mock_orders_gateway.dart';
 ({ProviderContainer container, MockOrdersGateway gateway}) wired() {
   final gateway = MockOrdersGateway();
   final container = ProviderContainer.test(
-    overrides: [ordersGatewayProvider.overrideWithValue(gateway)],
+    overrides: [ordersServiceProvider.overrideWithValue(gateway)],
     // Riverpod retries a failing provider on its own — ten times, 200ms
     // doubling to 6.4s. A test about what the selector reports while a read is
     // failed cannot wait that out.
@@ -40,7 +40,7 @@ void main() {
       final (:container, :gateway) = wired();
       serving(gateway, ['order-1']);
 
-      container.read(ordersProvider);
+      container.read(ordersRepositoryProvider);
 
       expect(container.read(orderIdsSelector), isEmpty);
     });
@@ -49,7 +49,7 @@ void main() {
       final (:container, :gateway) = wired();
       serving(gateway, ['order-2', 'order-1']);
 
-      await container.read(ordersProvider.future);
+      await container.read(ordersRepositoryProvider.future);
 
       expect(container.read(orderIdsSelector), ['order-2', 'order-1']);
     });
@@ -59,7 +59,10 @@ void main() {
       when(gateway.getOrders)
           .thenAnswer((_) async => throw Exception('no resource'));
 
-      await expectLater(container.read(ordersProvider.future), throwsException);
+      await expectLater(
+        container.read(ordersRepositoryProvider.future),
+        throwsException,
+      );
 
       expect(container.read(orderIdsSelector), isEmpty);
     });
@@ -67,12 +70,12 @@ void main() {
     test('keeps the ids while a later read is in flight', () async {
       final (:container, :gateway) = wired();
       serving(gateway, ['order-1']);
-      await container.read(ordersProvider.future);
+      await container.read(ordersRepositoryProvider.future);
 
       final refetch = Completer<List<OrderEntity>>();
       when(gateway.getOrders).thenAnswer((_) => refetch.future);
-      container.invalidate(ordersProvider);
-      container.read(ordersProvider);
+      container.invalidate(ordersRepositoryProvider);
+      container.read(ordersRepositoryProvider);
       await container.pump();
 
       expect(container.read(orderIdsSelector), [
@@ -80,7 +83,7 @@ void main() {
       ], reason: 'a read in flight is not a reason to render nothing');
 
       refetch.complete([makeOrder('order-2')]);
-      await container.read(ordersProvider.future);
+      await container.read(ordersRepositoryProvider.future);
 
       expect(container.read(orderIdsSelector), ['order-2']);
     });
@@ -88,12 +91,15 @@ void main() {
     test('keeps the ids when a later read fails', () async {
       final (:container, :gateway) = wired();
       serving(gateway, ['order-1']);
-      await container.read(ordersProvider.future);
+      await container.read(ordersRepositoryProvider.future);
 
       when(gateway.getOrders)
           .thenAnswer((_) async => throw Exception('no resource'));
-      container.invalidate(ordersProvider);
-      await expectLater(container.read(ordersProvider.future), throwsException);
+      container.invalidate(ordersRepositoryProvider);
+      await expectLater(
+        container.read(ordersRepositoryProvider.future),
+        throwsException,
+      );
 
       expect(container.read(orderIdsSelector), ['order-1']);
     });
@@ -104,12 +110,12 @@ void main() {
       var announcements = 0;
       container.listen(orderIdsSelector, (_, _) => announcements++);
 
-      await container.read(ordersProvider.future);
+      await container.read(ordersRepositoryProvider.future);
       await container.pump();
       final afterLoad = announcements;
 
-      container.invalidate(ordersProvider);
-      await container.read(ordersProvider.future);
+      container.invalidate(ordersRepositoryProvider);
+      await container.read(ordersRepositoryProvider.future);
       await container.pump();
 
       expect(
@@ -125,13 +131,13 @@ void main() {
       var announcements = 0;
       container.listen(orderIdsSelector, (_, _) => announcements++);
 
-      await container.read(ordersProvider.future);
+      await container.read(ordersRepositoryProvider.future);
       await container.pump();
       final afterLoad = announcements;
 
       serving(gateway, ['order-1', 'order-3']);
-      container.invalidate(ordersProvider);
-      await container.read(ordersProvider.future);
+      container.invalidate(ordersRepositoryProvider);
+      await container.read(ordersRepositoryProvider.future);
       await container.pump();
 
       expect(announcements, greaterThan(afterLoad));

@@ -42,7 +42,7 @@ class Orders extends ConsumerWidget {
     // first read has nothing to show, a re-read still has the last orders on
     // screen, and a write is neither. All three are worth telling apart.
     final read = ref.watch(
-      ordersProvider.select(
+      ordersRepositoryProvider.select(
         (orders) => (isLoading: orders.isLoading, hasValue: orders.hasValue),
       ),
     );

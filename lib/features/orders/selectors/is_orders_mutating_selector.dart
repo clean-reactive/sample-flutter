@@ -7,5 +7,7 @@ import '../repositories/orders_repository.dart';
 /// The feature-wide counterpart to the per-order and per-item selectors: those
 /// answer for one button, this answers for the feature's status.
 final isOrdersMutatingSelector = Provider<bool>(
-  (ref) => ref.watch(writesInFlight.select((count) => count > 0)),
+  (ref) => ref.watch(
+    ordersRepositoryWritesInFlightProvider.select((count) => count > 0),
+  ),
 );

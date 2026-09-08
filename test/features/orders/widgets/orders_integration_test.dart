@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:cleanreactive/features/orders/repositories/order_entities.dart';
-import 'package:cleanreactive/features/orders/repositories/orders_service.dart';
+import 'package:cleanreactive/features/orders/repositories/orders_service/orders_service.dart';
 import 'package:cleanreactive/features/orders/widgets/order/order.dart';
 import 'package:cleanreactive/features/orders/widgets/order_item/order_item.dart';
 import 'package:cleanreactive/features/orders/widgets/orders.dart';
@@ -22,7 +22,7 @@ import '../repositories/mock_orders_gateway.dart';
 Future<void> pumpOrders(WidgetTester tester, MockOrdersGateway gateway) =>
     tester.pumpWidget(
       ProviderScope(
-        overrides: [ordersGatewayProvider.overrideWithValue(gateway)],
+        overrides: [ordersServiceProvider.overrideWithValue(gateway)],
         child: const MaterialApp(
           home: Scaffold(body: SingleChildScrollView(child: Orders())),
         ),

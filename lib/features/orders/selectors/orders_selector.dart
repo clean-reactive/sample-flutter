@@ -13,6 +13,7 @@ import '../repositories/orders_repository.dart';
 /// rather than from the repository, so what a read is doing stays the
 /// repository's business and not theirs.
 final ordersSelector = Provider<List<OrderEntity>>(
-  (ref) =>
-      ref.watch(ordersProvider.select((orders) => orders.value ?? const [])),
+  (ref) => ref.watch(
+    ordersRepositoryProvider.select((orders) => orders.value ?? const []),
+  ),
 );

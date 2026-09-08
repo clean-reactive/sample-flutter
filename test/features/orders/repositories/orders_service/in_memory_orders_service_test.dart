@@ -1,9 +1,9 @@
-import 'package:cleanreactive/features/orders/repositories/in_memory_orders_service.dart';
+import 'package:cleanreactive/features/orders/repositories/orders_service/in_memory_orders_service.dart';
 import 'package:cleanreactive/features/orders/repositories/order_entities.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../orders_factory.dart';
+import '../../orders_factory.dart';
 
 /// Two orders, the first holding two items — enough to show that a delete
 /// takes what it was asked for and nothing next to it.

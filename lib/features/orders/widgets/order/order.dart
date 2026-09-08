@@ -1,10 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'dart:async';
-
 import '../../repositories/order_entities.dart';
-import '../../use_cases/delete_order_use_case.dart';
+import '../../repositories/orders_repository.dart';
 import '../order_item/order_item.dart';
 import '../section_label.dart';
 import 'order_presenter.dart';
@@ -29,11 +29,31 @@ class Order extends ConsumerWidget {
 
     final presenter = ref.watch(orderPresenter(id));
 
+    // use case
+    //
+    // It carries no rule of its own about *what* to delete — deleting an order
+    // means deleting it — so it passes straight to the repository. What it does
+    // carry is the mutation the write runs under, keyed by this order, and
+    // where a refused write stops. `run` records the failure as the mutation's
+    // state and then rethrows it; the controller below does not wait for it, so
+    // an error let past here would surface as an unhandled error rather than as
+    // the state something can render.
+    Future<void> deleteOrderUseCase() async {
+      try {
+        await deleteOrderMutation(id).run(
+          ref,
+          (tsx) => tsx.get(ordersRepositoryProvider.notifier).deleteOrder(id),
+        );
+      } on Object catch (_) {
+        // recorded by the mutation; the throw stops here
+      }
+    }
+
     // controller
     //
     // It turns a press into the use case's terms and nothing else.
     void deleteOrderButtonPressed() {
-      unawaited(ref.read(deleteOrderUseCase).execute(id));
+      unawaited(deleteOrderUseCase());
     }
 
     return _UserInterface(

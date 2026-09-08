@@ -1,10 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'dart:async';
-
 import '../../repositories/order_entities.dart';
-import '../../use_cases/delete_order_item_use_case.dart';
+import '../../repositories/orders_repository.dart';
+import '../../selectors/order_by_id_selector.dart';
 import '../field.dart';
 import 'order_item_presenter.dart';
 import 'order_item_types.dart';
@@ -32,13 +33,47 @@ class OrderItem extends ConsumerWidget {
 
     final presenter = ref.watch(orderItemPresenter(identity));
 
+    // use case
+    //
+    // Deletes an item — or the whole order, when the item is its last. That
+    // choice is the reason this exists at all. Neither the gateway nor the
+    // controller decides it: the gateway offers both operations and chooses
+    // neither, and the controller knows only that a button was pressed.
+    //
+    // Each branch names the mutation its write runs under, keyed by what that
+    // write removes: this item, or the order it was the last of. That is what
+    // the selectors behind the two buttons read to know one is in flight.
+    Future<void> deleteOrderItemUseCase() async {
+      final order = ref.read(orderByIdSelector(identity.orderId));
+      final isLastItem = order?.itemEntities.length == 1;
+
+      try {
+        if (isLastItem) {
+          await deleteOrderMutation(identity.orderId).run(
+            ref,
+            (tsx) => tsx
+                .get(ordersRepositoryProvider.notifier)
+                .deleteOrder(identity.orderId),
+          );
+          return;
+        }
+
+        await deleteOrderItemMutation(identity).run(
+          ref,
+          (tsx) => tsx
+              .get(ordersRepositoryProvider.notifier)
+              .deleteItem(identity.orderId, identity.itemId),
+        );
+      } on Object catch (_) {
+        // recorded by the mutation; the throw stops here
+      }
+    }
+
     // controller
     //
-    // It converts a press into the use case's terms and nothing else. What
-    // deleting an item means — including that deleting the last one deletes the
-    // order — is decided there, not here.
+    // It converts a press into the use case's terms and nothing else.
     void deleteItemButtonPressed() {
-      unawaited(ref.read(deleteOrderItemUseCase).execute(identity));
+      unawaited(deleteOrderItemUseCase());
     }
 
     return _UserInterface(
