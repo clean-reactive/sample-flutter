@@ -382,5 +382,57 @@ void main() {
         expect(container.read(ordersRepositoryWritesInFlightProvider), 0);
       });
     });
+
+    group('dropOrders', () {
+      test('drops the orders held', () async {
+        final (:container, :gateway) = wired();
+        serving(gateway, ['order-1', 'order-2']);
+        await container.read(ordersRepositoryProvider.future);
+
+        container.read(ordersRepositoryProvider.notifier).dropOrders();
+
+        expect(idsOf(held(container)), isEmpty);
+      });
+
+      test('asks the resource for nothing', () async {
+        final (:container, :gateway) = wired();
+        serving(gateway, ['order-1', 'order-2']);
+        await container.read(ordersRepositoryProvider.future);
+
+        container.read(ordersRepositoryProvider.notifier).dropOrders();
+
+        verify(gateway.getOrders).called(1);
+        verifyNever(() => gateway.deleteOrder(any()));
+        verifyNever(() => gateway.deleteItem(any(), any()));
+      });
+
+      test('holds nothing while the read that follows is in flight', () async {
+        final (:container, :gateway) = wired();
+        serving(gateway, ['order-1', 'order-2']);
+        await container.read(ordersRepositoryProvider.future);
+
+        container.read(ordersRepositoryProvider.notifier).dropOrders();
+
+        // held open, so there is a moment where the read has started and the
+        // resource has not answered — the moment a rebuild would otherwise
+        // stand the dropped orders back up
+        final read = Completer<List<OrderEntity>>();
+        when(gateway.getOrders).thenAnswer((_) => read.future);
+        container.invalidate(ordersRepositoryProvider);
+        container.read(ordersRepositoryProvider);
+        await container.pump();
+
+        expect(
+          idsOf(held(container)),
+          isEmpty,
+          reason:
+              'a read keeps what is held when it starts, and by then nothing '
+              'was',
+        );
+
+        read.complete([]);
+        await container.pump();
+      });
+    });
   });
 }

@@ -35,6 +35,8 @@ class OrdersRepository extends AsyncNotifier<List<OrderEntity>> {
     }
   }
 
+  void dropOrders() => state = const AsyncData([]);
+
   Future<void> deleteOrder(OrderEntityId orderId) => _write(
     optimistically: (orders) => [
       for (final order in orders)

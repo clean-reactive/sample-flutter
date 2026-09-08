@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../repositories/orders_repository.dart';
 import '../stores/orders_presentation.dart';
 
 /// Orders resource picker unit.
@@ -31,9 +32,16 @@ class OrdersResourcePicker extends ConsumerWidget {
     //
     // The button allows neither an empty selection nor several, so what it
     // reports always holds exactly one.
-    void resourceSelectionChanged(Set<OrdersResource> selection) => ref
-        .read(ordersPresentationStore.notifier)
-        .setOrdersResource(selection.first);
+    //
+    // The orders held were read from the resource being left, so they go with
+    // it. They are dropped before the choice is recorded: the read that
+    // follows keeps whatever is held when it starts.
+    void resourceSelectionChanged(Set<OrdersResource> selection) {
+      ref.read(ordersRepositoryProvider.notifier).dropOrders();
+      ref
+          .read(ordersPresentationStore.notifier)
+          .setOrdersResource(selection.first);
+    }
 
     // user interface
     return SegmentedButton<OrdersResource>(

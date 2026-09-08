@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:cleanreactive/features/orders/drivers/toast_driver.dart';
 import 'package:cleanreactive/features/orders/repositories/order_entities.dart';
+import 'package:cleanreactive/features/orders/repositories/orders_service/in_memory_orders_service.dart';
 import 'package:cleanreactive/features/orders/repositories/orders_service/orders_service.dart';
+import 'package:cleanreactive/features/orders/repositories/orders_service/remote_orders_service.dart';
 import 'package:cleanreactive/features/orders/widgets/order/order.dart';
 import 'package:cleanreactive/features/orders/widgets/order_item/order_item.dart';
 import 'package:cleanreactive/features/orders/widgets/orders.dart';
@@ -40,6 +42,34 @@ Future<void> pumpOrders(WidgetTester tester, MockOrdersGateway gateway) =>
         ),
       ),
     );
+
+/// The feature with both resources stood in for.
+///
+/// [ordersServiceProvider] is left alone, so picking a resource still resolves
+/// through it. A scenario about switching is about that resolution, and a
+/// gateway handed straight to the repository would skip it.
+Future<void> pumpResources(
+  WidgetTester tester, {
+  required MockOrdersGateway local,
+  required MockOrdersGateway remote,
+}) => tester.pumpWidget(
+  ProviderScope(
+    overrides: [
+      inMemoryOrdersServiceProvider.overrideWithValue(local),
+      remoteOrdersServiceProvider.overrideWithValue(remote),
+    ],
+    child: const MaterialApp(
+      home: Scaffold(
+        body: Stack(
+          children: [
+            SingleChildScrollView(child: Orders()),
+            OrdersToastDriver(),
+          ],
+        ),
+      ),
+    ),
+  ),
+);
 
 /// What the resource holds once a read lands.
 ///
@@ -403,5 +433,31 @@ void main() {
           .onPressed,
       isNotNull,
     );
+  });
+
+  testWidgets('wipes the orders of the resource left behind', (tester) async {
+    final local = MockOrdersGateway();
+    final remote = MockOrdersGateway();
+    when(local.getOrders).thenAnswer((_) async => ordersMock);
+
+    // held open, so there is a moment where the resource has been switched and
+    // the new one has not answered — the moment the orders of the one left
+    // behind would still be on screen
+    final remoteRead = Completer<List<OrderEntity>>();
+    when(remote.getOrders).thenAnswer((_) => remoteRead.future);
+
+    await pumpResources(tester, local: local, remote: remote);
+    await tester.pumpAndSettle();
+    expect(ordersOnScreen(tester), ['order-1', 'order-2', 'order-3']);
+
+    await tester.tap(find.text('Remote'));
+    await tester.pump();
+
+    expect(
+      ordersOnScreen(tester),
+      isEmpty,
+      reason: 'the orders of one resource are not the orders of another',
+    );
+    expect(statistic(tester, 'orders'), '0');
   });
 }
