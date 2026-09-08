@@ -14,10 +14,15 @@ class App extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       ),
       home: const Scaffold(
-        body: Center(
-          child: SingleChildScrollView(
-            child: Padding(padding: EdgeInsets.all(24), child: Orders()),
-          ),
+        body: Stack(
+          children: [
+            Center(
+              child: SingleChildScrollView(
+                child: Padding(padding: EdgeInsets.all(24), child: Orders()),
+              ),
+            ),
+            OrdersToastDriver(),
+          ],
         ),
       ),
     );

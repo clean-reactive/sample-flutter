@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cleanreactive/features/orders/drivers/toast_driver.dart';
 import 'package:cleanreactive/features/orders/repositories/order_entities.dart';
 import 'package:cleanreactive/features/orders/repositories/orders_service/orders_service.dart';
 import 'package:cleanreactive/features/orders/widgets/order/order.dart';
@@ -19,12 +20,23 @@ import '../repositories/mock_orders_gateway.dart';
 /// Everything between the gateway and the screen is real — repository,
 /// selectors, presenters — because what a scenario checks is that they add up
 /// to what a user sees.
+///
+/// Both drivers are placed, the way the application places them: the screen,
+/// and the toast beside it. A scenario that ends in an announcement has
+/// somewhere for it to arrive.
 Future<void> pumpOrders(WidgetTester tester, MockOrdersGateway gateway) =>
     tester.pumpWidget(
       ProviderScope(
         overrides: [ordersServiceProvider.overrideWithValue(gateway)],
         child: const MaterialApp(
-          home: Scaffold(body: SingleChildScrollView(child: Orders())),
+          home: Scaffold(
+            body: Stack(
+              children: [
+                SingleChildScrollView(child: Orders()),
+                OrdersToastDriver(),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -170,6 +182,28 @@ void main() {
     expect(statistic(tester, 'orders'), '3');
     expect(statistic(tester, 'items'), '4');
     expect(statistic(tester, 'qty'), '14');
+  });
+
+  testWidgets('announces a read that failed, and shows no orders', (
+    tester,
+  ) async {
+    final gateway = MockOrdersGateway();
+    when(gateway.getOrders)
+        .thenAnswer((_) async => throw Exception('the resource refused'));
+
+    await pumpOrders(tester, gateway);
+    await tester.pump();
+
+    expect(
+      find.widgetWithText(SnackBar, 'could not read the orders'),
+      findsOneWidget,
+    );
+
+    // nothing was read, so there is nothing to show. The read path answers a
+    // failed read as no orders, which is why the statistics count none rather
+    // than saying the resource refused — the announcement is what carries that.
+    expect(find.byType(Order), findsNothing);
+    expect(statistic(tester, 'orders'), '0');
   });
 
   testWidgets('takes a deleted order off the screen before the write lands', (
