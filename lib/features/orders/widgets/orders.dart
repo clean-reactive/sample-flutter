@@ -40,19 +40,31 @@ class Orders extends ConsumerWidget {
     //
     // The status members come from the operations rather than the entities: a
     // first read has nothing to show, a re-read still has the last orders on
-    // screen, and a write is neither. All three are worth telling apart.
+    // screen, a write is neither, and a read that failed is none of them. All
+    // four are worth telling apart — a resource that refused is not a resource
+    // holding no orders, and the entities cannot say which it was.
     final read = ref.watch(
       ordersRepositoryProvider.select(
-        (orders) => (isLoading: orders.isLoading, hasValue: orders.hasValue),
+        (orders) => (
+          isLoading: orders.isLoading,
+          hasValue: orders.hasValue,
+          hasError: orders.hasError,
+        ),
       ),
     );
     final isMutating = ref.watch(isOrdersMutatingSelector);
 
     final isProcessing = read.isLoading || isMutating;
-    final statusLabel = switch ((read.isLoading, read.hasValue, isMutating)) {
-      (true, false, _) => 'loading',
-      (true, true, _) => 'fetching',
-      (false, _, true) => 'mutating',
+    final statusLabel = switch ((
+      read.isLoading,
+      read.hasValue,
+      read.hasError,
+      isMutating,
+    )) {
+      (true, false, _, _) => 'loading',
+      (true, true, _, _) => 'fetching',
+      (false, _, _, true) => 'mutating',
+      (false, _, true, _) => 'failed',
       _ => 'idle',
     };
 

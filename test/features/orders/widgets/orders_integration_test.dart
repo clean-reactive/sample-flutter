@@ -30,6 +30,10 @@ Future<void> pumpOrders(WidgetTester tester, MockOrdersGateway gateway) =>
     tester.pumpWidget(
       ProviderScope(
         overrides: [ordersServiceProvider.overrideWithValue(gateway)],
+        // Riverpod retries a failing provider on its own — ten times, 200ms
+        // doubling to 6.4s. A scenario about what a failed read leaves on
+        // screen cannot wait that out.
+        retry: (_, _) => null,
         child: const MaterialApp(
           home: Scaffold(
             body: Stack(
@@ -229,11 +233,13 @@ void main() {
       findsOneWidget,
     );
 
-    // nothing was read, so there is nothing to show. The read path answers a
-    // failed read as no orders, which is why the statistics count none rather
-    // than saying the resource refused — the announcement is what carries that.
+    // nothing was read, so there is nothing to show. The statistics count none
+    // either way, so the status is what tells a resource that refused apart
+    // from one holding no orders.
     expect(find.byType(Order), findsNothing);
     expect(statistic(tester, 'orders'), '0');
+    expect(find.text('failed'), findsOneWidget);
+    expect(find.text('idle'), findsNothing);
   });
 
   testWidgets('takes a deleted order off the screen before the write lands', (

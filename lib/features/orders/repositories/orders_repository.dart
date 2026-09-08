@@ -15,6 +15,8 @@ class OrdersRepository extends AsyncNotifier<List<OrderEntity>> {
   Future<List<OrderEntity>> build() =>
       ref.watch(ordersServiceProvider).getOrders();
 
+  void dropOrders() => state = const AsyncData([]);
+
   Future<void> _write({
     required List<OrderEntity> Function(List<OrderEntity> orders)
     optimistically,
@@ -34,8 +36,6 @@ class OrdersRepository extends AsyncNotifier<List<OrderEntity>> {
       inFlight.finished();
     }
   }
-
-  void dropOrders() => state = const AsyncData([]);
 
   Future<void> deleteOrder(OrderEntityId orderId) => _write(
     optimistically: (orders) => [

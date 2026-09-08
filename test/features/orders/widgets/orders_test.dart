@@ -7,7 +7,13 @@ import 'package:flutter_test/flutter_test.dart';
 String statusLabel(WidgetTester tester) {
   for (final text in tester.widgetList<Text>(find.byType(Text))) {
     final data = text.data;
-    if (const ['idle', 'loading', 'fetching', 'mutating'].contains(data)) {
+    if (const [
+      'idle',
+      'loading',
+      'fetching',
+      'mutating',
+      'failed',
+    ].contains(data)) {
       return data!;
     }
   }
