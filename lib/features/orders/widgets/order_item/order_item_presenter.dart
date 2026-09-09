@@ -16,22 +16,20 @@ import 'order_item_types.dart';
 /// [OrderItemPresenter.productQuantity] is formatted here. The entity carries a
 /// number; the contract asks for text.
 final orderItemPresenter = Provider.autoDispose
-    .family<OrderItemPresenter, ({OrderEntityId orderId, ItemEntityId itemId})>(
-      (ref, identity) {
-        final productId = ref.watch(
-          itemByIdSelector(identity).select((item) => item?.productId ?? ''),
-        );
-        final quantity = ref.watch(
-          itemByIdSelector(identity).select((item) => item?.quantity ?? 0),
-        );
+    .family<OrderItemPresenter, (OrderEntityId, ItemEntityId)>((ref, identity) {
+      final (_, itemId) = identity;
 
-        return (
-          itemId: identity.itemId,
-          productId: productId,
-          productQuantity: '$quantity',
-          isDeleteItemButtonDisabled: ref.watch(
-            isDeletingItemSelector(identity),
-          ),
-        );
-      },
-    );
+      final productId = ref.watch(
+        itemByIdSelector(identity).select((item) => item?.productId ?? ''),
+      );
+      final quantity = ref.watch(
+        itemByIdSelector(identity).select((item) => item?.quantity ?? 0),
+      );
+
+      return (
+        itemId: itemId,
+        productId: productId,
+        productQuantity: '$quantity',
+        isDeleteItemButtonDisabled: ref.watch(isDeletingItemSelector(identity)),
+      );
+    });

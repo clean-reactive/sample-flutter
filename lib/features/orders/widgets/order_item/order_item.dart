@@ -17,18 +17,19 @@ class OrderItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final identity = (
-      orderId: OrderEntityId(orderId),
-      itemId: ItemEntityId(itemId),
-    );
+    final orderEntityId = OrderEntityId(orderId);
+    final itemEntityId = ItemEntityId(itemId);
 
     final executeDeleteOrderItem = ref.read(deleteOrderItemUseCase);
 
-    final presenter = ref.watch(orderItemPresenter(identity));
+    // presenter
+    final presenter = ref.watch(
+      orderItemPresenter((orderEntityId, itemEntityId)),
+    );
 
     // controller
     void deleteItemButtonPressed() {
-      unawaited(executeDeleteOrderItem(identity));
+      unawaited(executeDeleteOrderItem(orderEntityId, itemEntityId));
     }
 
     return _UserInterface(

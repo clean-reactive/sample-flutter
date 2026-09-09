@@ -14,16 +14,13 @@ import 'is_deleting_order_selector.dart';
 /// that starts a delete. The repository holds what is in flight; this reads it,
 /// and a presenter reads this.
 final isDeletingItemSelector = Provider.autoDispose
-    .family<bool, ({OrderEntityId orderId, ItemEntityId itemId})>((
-      ref,
-      identity,
-    ) {
+    .family<bool, (OrderEntityId, ItemEntityId)>((ref, identity) {
+      final (orderId, _) = identity;
+
       final isDeletingItem = ref.watch(
         deleteOrderItemMutation(identity).select(_isPending),
       );
-      final isDeletingOrder = ref.watch(
-        isDeletingOrderSelector(identity.orderId),
-      );
+      final isDeletingOrder = ref.watch(isDeletingOrderSelector(orderId));
 
       return isDeletingItem || isDeletingOrder;
     });

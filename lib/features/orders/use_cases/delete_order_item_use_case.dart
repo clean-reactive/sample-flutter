@@ -9,28 +9,25 @@ class DeleteOrderItemUseCase {
 
   final Ref _ref;
 
-  Future<void> call(
-    ({OrderEntityId orderId, ItemEntityId itemId}) identity,
-  ) async {
-    final order = _ref.read(orderByIdSelector(identity.orderId));
+  Future<void> call(OrderEntityId orderId, ItemEntityId itemId) async {
+    final order = _ref.read(orderByIdSelector(orderId));
     final isLastItem = order?.itemEntities.length == 1;
 
     try {
       if (isLastItem) {
-        await deleteOrderMutation(identity.orderId).run(
+        await deleteOrderMutation(orderId).run(
           _ref,
-          (tsx) => tsx
-              .get(ordersRepositoryProvider.notifier)
-              .deleteOrder(identity.orderId),
+          (tsx) =>
+              tsx.get(ordersRepositoryProvider.notifier).deleteOrder(orderId),
         );
         return;
       }
 
-      await deleteOrderItemMutation(identity).run(
+      await deleteOrderItemMutation((orderId, itemId)).run(
         _ref,
         (tsx) => tsx
             .get(ordersRepositoryProvider.notifier)
-            .deleteItem(identity.orderId, identity.itemId),
+            .deleteItem(orderId, itemId),
       );
     } on Object catch (_) {
       // noop
