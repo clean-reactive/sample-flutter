@@ -7,9 +7,6 @@ import 'order_entities.dart';
 import 'orders_gateway.dart';
 import 'orders_service/orders_service.dart';
 
-/// Holds the enterprise and application business entities of the orders
-/// feature, and is responsible for caching, optimistic updates, and
-/// revalidation.
 class OrdersRepository extends AsyncNotifier<List<OrderEntity>> {
   @override
   Future<List<OrderEntity>> build() =>

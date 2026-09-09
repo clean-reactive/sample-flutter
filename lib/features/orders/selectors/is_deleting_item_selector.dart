@@ -5,14 +5,6 @@ import '../repositories/order_entities.dart';
 import '../repositories/orders_repository.dart';
 import 'is_deleting_order_selector.dart';
 
-/// Whether a delete that would remove this item is in flight.
-///
-/// Its own delete, or its order's — deleting an order's last item deletes the
-/// order, so the operation that removes an item can be either.
-///
-/// It exists so the read path can answer this without reaching for the unit
-/// that starts a delete. The repository holds what is in flight; this reads it,
-/// and a presenter reads this.
 final isDeletingItemSelector = Provider.autoDispose
     .family<bool, (OrderEntityId, ItemEntityId)>((ref, identity) {
       final (orderId, _) = identity;

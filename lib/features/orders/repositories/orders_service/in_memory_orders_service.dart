@@ -5,8 +5,7 @@ import '../orders_gateway.dart';
 
 /// Local [OrdersGateway], serving orders it holds in memory.
 class InMemoryOrdersService implements OrdersGateway {
-  /// Holds the list rather than copying it, and writes to it: it must be
-  /// growable, and one the caller is willing to give up.
+  /// Holds and mutates the list: it must be growable.
   InMemoryOrdersService(
     this._orders, {
     this.latency = const Duration(seconds: 1),
@@ -56,13 +55,11 @@ class InMemoryOrdersService implements OrdersGateway {
   }
 }
 
-/// The local resource. One per container, so writes survive a revisit.
 final inMemoryOrdersServiceProvider = Provider<OrdersGateway>(
   (ref) => InMemoryOrdersService(makeOrderEntities()),
 );
 
-/// Deterministic seed. Users repeat while orders do not, so the user and
-/// order counts differ.
+/// Deterministic seed; users repeat while orders do not.
 List<OrderEntity> makeOrderEntities({int orderCount = 3, int itemCount = 2}) =>
     List.generate(
       orderCount,

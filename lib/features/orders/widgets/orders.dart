@@ -9,40 +9,18 @@ import 'orders_resource_picker.dart';
 import 'orders_statistics.dart';
 import 'section_label.dart';
 
-/// Contract of the orders unit.
-///
-/// The unit renders the feature's frame and composes the child units. It takes
-/// no input from the user, so it declares a presenter and no controller.
-///
-/// [OrdersPresenter.orderIds] composes the child units by identity rather than
-/// by data, so each order obtains its own values.
-///
-/// A record, so it names the values and their types and nothing else. It speaks
-/// in plain Dart types, which is what keeps the collection library the selectors
-/// use out of the unit that renders them — the values cross this boundary as
-/// ordinary data, the way the architecture has data cross a boundary.
 typedef OrdersPresenter = ({
   bool isProcessing,
   String statusLabel,
   List<String> orderIds,
 });
 
-/// Orders unit.
-///
-/// The public entry point of the feature. It takes nothing from its parent —
-/// the values it renders are obtained here.
 class Orders extends ConsumerWidget {
   const Orders({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // presenter
-    //
-    // The status members come from the operations rather than the entities: a
-    // first read has nothing to show, a re-read still has the last orders on
-    // screen, a write is neither, and a read that failed is none of them. All
-    // four are worth telling apart — a resource that refused is not a resource
-    // holding no orders, and the entities cannot say which it was.
     final read = ref.watch(
       ordersRepositoryProvider.select(
         (orders) => (
@@ -68,10 +46,7 @@ class Orders extends ConsumerWidget {
       _ => 'idle',
     };
 
-    // The selector holds the ids in a list that compares by contents, which is
-    // what keeps an unchanged read from rebuilding this unit. The decision is
-    // made by `watch` above; converting afterwards costs nothing, and hands the
-    // contract an ordinary list.
+    // Converted after `watch`, so the contents still gate the rebuild.
     final orderIds = ref.watch(orderIdsSelector).toList();
 
     return _UserInterface(
@@ -84,11 +59,6 @@ class Orders extends ConsumerWidget {
   }
 }
 
-/// User interface unit of the orders feature.
-///
-/// Primitives in, layout out. Its one parameter is the contract itself, so what
-/// it renders cannot drift from what the presenter supplies. It places the
-/// child units directly — they carry no data from here, only identity.
 class _UserInterface extends StatelessWidget {
   const _UserInterface({required this.presenter});
 

@@ -3,10 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../repositories/orders_repository.dart';
 
-/// Toast driver of the orders feature.
-///
-/// A driver beside the user interface rather than a part of it: it observes
-/// the core and provides no input. It renders nothing.
+/// renders nothing.
 class OrdersToastDriver extends ConsumerWidget {
   const OrdersToastDriver({super.key});
 
