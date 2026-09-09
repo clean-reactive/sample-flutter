@@ -244,6 +244,71 @@ void main() {
           reason: 'a write that failed is a write that is no longer running',
         );
       });
+
+      test('keeps deleted orders gone while the deletes behind them are still '
+          'in flight', () async {
+        final (:container, :gateway) = wired();
+
+        // the resource as the writes leave it: a delete lands on it when the
+        // gateway is let answer, and every read from then on answers with
+        // what has landed so far
+        final resource = ['order-1', 'order-2', 'order-3', 'order-4'];
+        when(
+          gateway.getOrders,
+        ).thenAnswer((_) async => [for (final id in resource) makeOrder(id)]);
+
+        // held open one per order, so all three deletes can be asked for
+        // before any of them is answered — the user clicking faster than the
+        // resource replies
+        final deletions = <String, Completer<void>>{};
+        when(() => gateway.deleteOrder(any())).thenAnswer((invocation) {
+          final id = invocation.positionalArguments.single as String;
+          return (deletions[id] = Completer<void>()).future;
+        });
+
+        await container.read(ordersRepositoryProvider.future);
+        final repository = container.read(ordersRepositoryProvider.notifier);
+
+        final writing = [
+          for (final id in ['order-1', 'order-2', 'order-3'])
+            repository.deleteOrder(OrderEntityId(id)),
+        ];
+        expect(idsOf(held(container)), ['order-4']);
+
+        // every answer the repository settles on from here, in the order it
+        // settled on them. Listened rather than read, so a read the repository
+        // starts on its own is recorded too, and only where the read is over:
+        // a refresh in flight re-answers with the orders before it, which are
+        // already on the list.
+        final shown = <List<String>>[];
+        container.listen(ordersRepositoryProvider, (_, next) {
+          if (next case AsyncData(:final value, isLoading: false)) {
+            shown.add(idsOf(value));
+          }
+        }, fireImmediately: true);
+
+        // one at a time, each let land and be read after before the next
+        // one is: the reads are then as far apart as they get, and what one
+        // of them answers cannot be excused as the next one not having
+        // started yet
+        for (final id in ['order-1', 'order-2', 'order-3']) {
+          resource.remove(id);
+          deletions[id]!.complete();
+          await container.pump();
+          await container.pump();
+        }
+        await Future.wait(writing);
+        await container.pump();
+
+        expect(
+          shown,
+          everyElement(equals(['order-4'])),
+          reason:
+              'an order the user has deleted does not come back because a '
+              'read that another delete started answered with what the '
+              'resource held before this one landed',
+        );
+      });
     });
 
     group('deleteItem', () {

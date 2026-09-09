@@ -25,12 +25,17 @@ class OrdersRepository extends AsyncNotifier<List<OrderEntity>> {
     state = AsyncData(optimistically(orders));
     try {
       await asking(ref.read(ordersServiceProvider));
-      ref.invalidateSelf();
     } on Object {
       state = AsyncData(orders);
       rethrow;
     } finally {
       inFlight.finished();
+    }
+    // A read started while other writes are in flight answers without what
+    // they have not landed yet, standing deleted orders back up. Only the
+    // write that finishes last reads.
+    if (ref.read(ordersRepositoryWritesInFlightProvider) == 0) {
+      ref.invalidateSelf();
     }
   }
 
