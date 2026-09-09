@@ -12,7 +12,7 @@ import 'section_label.dart';
 typedef OrdersPresenter = ({
   bool isProcessing,
   String statusLabel,
-  List<String> orderIds,
+  Iterable<String> orderIds,
 });
 
 class Orders extends ConsumerWidget {
@@ -46,8 +46,7 @@ class Orders extends ConsumerWidget {
       _ => 'idle',
     };
 
-    // Converted after `watch`, so the contents still gate the rebuild.
-    final orderIds = ref.watch(orderIdsSelector).toList();
+    final orderIds = ref.watch(orderIdsSelector);
 
     return _UserInterface(
       presenter: (

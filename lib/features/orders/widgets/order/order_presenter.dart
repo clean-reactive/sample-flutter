@@ -11,7 +11,7 @@ final orderPresenter = Provider.autoDispose
       final userId = ref.watch(
         orderByIdSelector(orderId).select((order) => order?.userId ?? ''),
       );
-      final itemIds = ref.watch(orderItemIdsSelector(orderId)).toList();
+      final itemIds = ref.watch(orderItemIdsSelector(orderId));
 
       return (
         orderId: orderId,

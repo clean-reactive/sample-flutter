@@ -4,7 +4,7 @@ typedef OrderPresenter = ({
   String orderId,
   String userId,
   String summaryLabel,
-  List<String> itemIds,
+  Iterable<String> itemIds,
   bool isDeleteOrderButtonDisabled,
 });
 
