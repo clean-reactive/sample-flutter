@@ -1,14 +1,16 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../repositories/order_entities.dart';
-import '../../use_cases/delete_order_item_use_case.dart';
 import '../field.dart';
+import 'order_item_controller.dart';
 import 'order_item_presenter.dart';
 import 'order_item_types.dart';
 
+/// Presenter, controller and user interface each extracted into their own unit.
+///
+/// The presenter is watched and the controller is read: renders follow the read
+/// path, and a controller nothing subscribes to cannot cause one.
 class OrderItem extends ConsumerWidget {
   const OrderItem({super.key, required this.orderId, required this.itemId});
 
@@ -17,24 +19,11 @@ class OrderItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final orderEntityId = OrderEntityId(orderId);
-    final itemEntityId = ItemEntityId(itemId);
-
-    final executeDeleteOrderItem = ref.read(deleteOrderItemUseCase);
-
-    // presenter
-    final presenter = ref.watch(
-      orderItemPresenter((orderEntityId, itemEntityId)),
-    );
-
-    // controller
-    void deleteItemButtonPressed() {
-      unawaited(executeDeleteOrderItem(orderEntityId, itemEntityId));
-    }
+    final identity = (OrderEntityId(orderId), ItemEntityId(itemId));
 
     return _UserInterface(
-      presenter: presenter,
-      controller: (deleteItemButtonPressed: deleteItemButtonPressed),
+      presenter: ref.watch(orderItemPresenter(identity)),
+      controller: ref.read(orderItemController(identity)),
     );
   }
 }
