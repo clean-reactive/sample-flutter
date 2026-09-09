@@ -4,6 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../repositories/orders_repository.dart';
 import '../stores/orders_presentation.dart';
 
+/// Presenter, controller and user interface inlined in one component.
+///
+/// All three units are here and marked, none is extracted: one reading of the
+/// resource in use, one handler that changes it, and the buttons that show it.
+/// Extraction follows need, and nothing here has needed it yet.
 class OrdersResourcePicker extends ConsumerWidget {
   const OrdersResourcePicker({super.key});
 
