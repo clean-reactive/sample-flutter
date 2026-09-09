@@ -7,26 +7,56 @@ import 'order_entities.dart';
 import 'orders_gateway.dart';
 import 'orders_service/orders_service.dart';
 
+typedef _OrdersChange = List<OrderEntity> Function(List<OrderEntity> orders);
+
 class OrdersRepository extends AsyncNotifier<List<OrderEntity>> {
+  /// The orders the changes are held on top of.
+  List<OrderEntity> _base = const [];
+
+  /// The orders this repository put there itself, last time it did.
+  List<OrderEntity> _held = const [];
+
+  /// The changes held on top of [_base], in the order they were asked for. A
+  /// write that fails drops its own and the rest are held again: putting back
+  /// a snapshot would take back the changes of the writes still in flight.
+  final _changes = <Object, _OrdersChange>{};
+
   @override
   Future<List<OrderEntity>> build() =>
       ref.watch(ordersServiceProvider).getOrders();
 
   void dropOrders() => state = const AsyncData([]);
 
+  void _hold(List<OrderEntity> orders) {
+    _held = orders;
+    state = AsyncData(orders);
+  }
+
+  List<OrderEntity> _changed() =>
+      _changes.values.fold(_base, (orders, change) => change(orders));
+
   Future<void> _write({
-    required List<OrderEntity> Function(List<OrderEntity> orders)
-    optimistically,
+    required _OrdersChange optimistically,
     required Future<void> Function(OrdersGateway gateway) asking,
   }) async {
     final orders = state.requireValue;
+    if (!identical(orders, _held)) {
+      // Orders something other than a write put there — a read that landed, or
+      // a drop. They are what the changes from here are held on top of.
+      _changes.clear();
+      _base = orders;
+    }
+
+    final write = Object();
     final inFlight = ref.read(ordersRepositoryWritesInFlightProvider.notifier);
     inFlight.started();
-    state = AsyncData(optimistically(orders));
+    _changes[write] = optimistically;
+    _hold(_changed());
     try {
       await asking(ref.read(ordersServiceProvider));
     } on Object {
-      state = AsyncData(orders);
+      _changes.remove(write);
+      _hold(_changed());
       rethrow;
     } finally {
       inFlight.finished();

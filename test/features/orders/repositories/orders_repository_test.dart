@@ -18,11 +18,6 @@ import 'mock_orders_gateway.dart';
 /// when it lands, and that the feature knows a write is running while it runs.
 /// None of that is visible from the gateway, so the gateway is the double and
 /// everything above it is absent.
-///
-/// The counter is listened to, not just read. Nothing else in this container
-/// holds it, and a provider nothing holds does not survive between the write
-/// that raises it and the assertion that reads it; in the application
-/// `isOrdersMutatingSelector` is what watches it.
 ({ProviderContainer container, MockOrdersGateway gateway}) wired() {
   final gateway = MockOrdersGateway();
   final container = ProviderContainer.test(
@@ -32,7 +27,6 @@ import 'mock_orders_gateway.dart';
     // wait that out.
     retry: (_, _) => null,
   );
-  container.listen(ordersRepositoryWritesInFlightProvider, (_, _) {});
   return (container: container, gateway: gateway);
 }
 
@@ -308,6 +302,36 @@ void main() {
               'read that another delete started answered with what the '
               'resource held before this one landed',
         );
+      });
+      test('puts back only the order whose write failed', () async {
+        final (:container, :gateway) = wired();
+        serving(gateway, ['order-1', 'order-2', 'order-3', 'order-4']);
+        await container.read(ordersRepositoryProvider.future);
+
+        final deletions = <String, Completer<void>>{};
+        when(() => gateway.deleteOrder(any())).thenAnswer((invocation) {
+          final id = invocation.positionalArguments.single as String;
+          return (deletions[id] = Completer<void>()).future;
+        });
+
+        final repository = container.read(ordersRepositoryProvider.notifier);
+        final failing = repository.deleteOrder(const OrderEntityId('order-1'));
+        final writing = repository.deleteOrder(const OrderEntityId('order-2'));
+        expect(idsOf(held(container)), ['order-3', 'order-4']);
+
+        deletions['order-1']!.completeError(Exception('no resource'));
+        await expectLater(failing, throwsException);
+
+        expect(
+          idsOf(held(container)),
+          ['order-1', 'order-3', 'order-4'],
+          reason:
+              'a write that failed puts back its own order, not the orders '
+              'the writes still in flight have already taken away',
+        );
+
+        deletions['order-2']!.complete();
+        await writing;
       });
     });
 

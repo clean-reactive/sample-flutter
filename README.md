@@ -65,6 +65,10 @@ diagram maps to this codebase.
 | Driver                          | Widget that listens and renders nothing | `drivers/toast_driver.dart`                                 |
 | External resource               | Whatever a service talks to             | behind `RemoteOrdersService`                                |
 
+## UML diagram representing application architecture
+
+![clean-reactive-architecture-repository-with-gateway-interface](./clean-reactive-architecture-repository-with-gateway-interface.png)
+
 ## Key design decisions
 
 **The repository is the gateway/entities composite.** `OrdersRepository` is an
@@ -79,17 +83,22 @@ remote service. Swapping the resource is a value change in an application
 business entity, not a structural change — and it is what
 `OrdersResourcePicker` writes to.
 
-**Optimistic writes with a single revalidation.** A write drops the entity from
-the held state before the resource is asked, restores it if the write fails,
-and re-reads afterwards so the resource has the last word. Because several
-writes can be in flight at once and each read answers with the resource as it
-stood when the read started, only the write that finishes last re-reads —
-otherwise an earlier read stands back up orders the user has already been shown
-as gone.
+**Optimistic writes, held as changes rather than snapshots.** A write drops the
+entity from the held state before the resource is asked, and re-reads
+afterwards so the resource has the last word. Several writes can be in flight
+at once, and both rules follow from that. The repository holds the orders the
+resource last answered with plus the changes asked for on top of them, so a
+write that fails drops its own change and the rest are held again — putting
+back a snapshot would take back the changes of the writes still in flight. And
+because each read answers with the resource as it stood when the read started,
+only the write that finishes last re-reads — an earlier one would stand back up
+orders the user has already been shown as gone.
 
 **Write state is an application business entity.**
 `OrdersRepositoryWritesInFlight` counts the writes running right now;
-`isOrdersMutatingSelector` reads it for the status label. Per-operation state
+`isOrdersMutatingSelector` reads it for the status label, and the repository
+reads it back to decide whether to re-read. It is the state itself, not a copy
+of something the repository also keeps. Per-operation state
 comes from Riverpod's `Mutation` API, which `isDeletingOrderSelector` and
 `isDeletingItemSelector` read to disable the button belonging to one order or
 item.
