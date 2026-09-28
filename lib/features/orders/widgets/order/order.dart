@@ -10,8 +10,9 @@ import 'order_types.dart';
 
 /// Presenter, controller and user interface each extracted into their own unit.
 ///
-/// The presenter is watched and the controller is read: renders follow the read
-/// path, and a controller nothing subscribes to cannot cause one.
+/// Both are watched, so each lives exactly as long as this widget. Renders
+/// still follow the read path only: the controller watches nothing, so it never
+/// announces a new value and never causes one.
 class const Order({super.key, required final String orderId})
     extends ConsumerWidget {
   @override
@@ -20,7 +21,7 @@ class const Order({super.key, required final String orderId})
 
     return _UserInterface(
       presenter: ref.watch(orderPresenter(id)),
-      controller: ref.read(orderController(id)),
+      controller: ref.watch(orderController(id)),
     );
   }
 }
