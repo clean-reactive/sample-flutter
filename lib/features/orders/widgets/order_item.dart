@@ -23,13 +23,19 @@ class const OrderItem({
     final orderEntityId = OrderEntityId(orderId);
     final itemEntityId = ItemEntityId(itemId);
 
-    // presenter
+    // presenter; answers with view values rather than the entity, so a read
+    // that brings the same item as a new object compares equal
     final item = ref.watch(
-      orderByIdSelector(orderEntityId).select(
-        (order) => order?.itemEntities
+      orderByIdSelector(orderEntityId).select((order) {
+        // selector
+        final item = order?.itemEntities
             .where((item) => item.id == itemEntityId)
-            .firstOrNull,
-      ),
+            .firstOrNull;
+        if (item == null) {
+          return null;
+        }
+        return (productId: item.productId, quantity: '${item.quantity}');
+      }),
     );
     final isDeletingItem = ref.watch(
       deleteOrderItemMutation((orderEntityId, itemEntityId))
@@ -88,9 +94,9 @@ class const OrderItem({
               spacing: 24,
               runSpacing: 8,
               children: [
-                Field(label: 'ID', value: item.id),
+                Field(label: 'ID', value: itemId),
                 Field(label: 'PRODUCT ID', value: item.productId),
-                Field(label: 'QUANTITY', value: '${item.quantity}'),
+                Field(label: 'QUANTITY', value: item.quantity),
               ],
             ),
           ),
