@@ -13,12 +13,11 @@ import 'field.dart';
 ///
 /// Extraction follows need: the `Order` branch shows these units extracted,
 /// and nothing here has needed it yet.
-class OrderItem extends ConsumerWidget {
-  const OrderItem({super.key, required this.orderId, required this.itemId});
-
-  final String orderId;
-  final String itemId;
-
+class const OrderItem({
+  super.key,
+  required final String orderId,
+  required final String itemId,
+}) extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final orderEntityId = OrderEntityId(orderId);

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 
-class Pill extends StatelessWidget {
-  const Pill({super.key, required this.value, required this.label});
-
-  final String value;
-  final String label;
-
+class const Pill({
+  super.key,
+  required final String value,
+  required final String label,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);

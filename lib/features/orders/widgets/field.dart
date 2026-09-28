@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 
-class Field extends StatelessWidget {
-  const Field({super.key, required this.label, required this.value});
-
-  final String label;
-  final String value;
-
+class const Field({
+  super.key,
+  required final String label,
+  required final String value,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);

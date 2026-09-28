@@ -4,18 +4,13 @@ import '../order_entities.dart';
 import '../orders_gateway.dart';
 
 /// Local [OrdersGateway], serving orders it holds in memory.
-class InMemoryOrdersService implements OrdersGateway {
+class InMemoryOrdersService(
   /// Holds and mutates the list: it must be growable.
-  InMemoryOrdersService(
-    this._orders, {
-    this.latency = const Duration(seconds: 1),
-  });
-
-  final List<OrderEntity> _orders;
+  final List<OrderEntity> _orders, {
 
   /// Stands in for a real resource's delay, so loading states appear.
-  final Duration latency;
-
+  final Duration latency = const Duration(seconds: 1),
+}) implements OrdersGateway {
   @override
   Future<List<OrderEntity>> getOrders() async {
     await Future<void>.delayed(latency);

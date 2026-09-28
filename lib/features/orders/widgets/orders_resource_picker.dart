@@ -9,9 +9,7 @@ import '../stores/orders_presentation.dart';
 /// All three units are here and marked, none is extracted: one reading of the
 /// resource in use, one handler that changes it, and the buttons that show it.
 /// Extraction follows need, and nothing here has needed it yet.
-class OrdersResourcePicker extends ConsumerWidget {
-  const OrdersResourcePicker({super.key});
-
+class const OrdersResourcePicker({super.key}) extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // presenter

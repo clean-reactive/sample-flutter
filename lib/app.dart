@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import 'features/orders/orders.dart';
 
 /// Application shell: theme and the frame the feature is placed in.
-class App extends StatelessWidget {
-  const App({super.key});
-
+class const App({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

@@ -4,9 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../repositories/orders_repository.dart';
 
 /// renders nothing.
-class OrdersToastDriver extends ConsumerWidget {
-  const OrdersToastDriver({super.key});
-
+class const OrdersToastDriver({super.key}) extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final observable = ordersRepositoryProvider.select(

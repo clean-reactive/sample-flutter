@@ -9,9 +9,7 @@ import 'orders_resource_picker.dart';
 import 'orders_statistics.dart';
 import 'section_label.dart';
 
-class Orders extends ConsumerWidget {
-  const Orders({super.key});
-
+class const Orders({super.key}) extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // presenter

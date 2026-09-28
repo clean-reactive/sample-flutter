@@ -4,9 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../selectors/orders_selector.dart';
 import 'pill.dart';
 
-class OrdersStatistics extends ConsumerWidget {
-  const OrdersStatistics({super.key});
-
+class const OrdersStatistics({super.key}) extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // presenter

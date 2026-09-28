@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 
-class SectionLabel extends StatelessWidget {
-  const SectionLabel(this.text, {super.key});
-
-  final String text;
-
+class const SectionLabel(final String text, {super.key})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);

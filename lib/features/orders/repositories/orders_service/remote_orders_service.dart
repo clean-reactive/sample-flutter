@@ -4,9 +4,7 @@ import '../order_entities.dart';
 import '../orders_gateway.dart';
 
 /// The remote resource. A real client will live here.
-class RemoteOrdersService implements OrdersGateway {
-  const RemoteOrdersService();
-
+class const RemoteOrdersService() implements OrdersGateway {
   @override
   Future<List<OrderEntity>> getOrders() => throw _unimplemented;
 

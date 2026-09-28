@@ -12,11 +12,8 @@ import 'order_types.dart';
 ///
 /// The presenter is watched and the controller is read: renders follow the read
 /// path, and a controller nothing subscribes to cannot cause one.
-class Order extends ConsumerWidget {
-  const Order({super.key, required this.orderId});
-
-  final String orderId;
-
+class const Order({super.key, required final String orderId})
+    extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final id = OrderEntityId(orderId);
@@ -28,12 +25,10 @@ class Order extends ConsumerWidget {
   }
 }
 
-class _UserInterface extends StatelessWidget {
-  const _UserInterface({required this.presenter, required this.controller});
-
-  final OrderPresenter presenter;
-  final OrderController controller;
-
+class const _UserInterface({
+  required final OrderPresenter presenter,
+  required final OrderController controller,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
