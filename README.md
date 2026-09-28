@@ -77,50 +77,46 @@ diagram maps to this codebase.
 
 ## Key design decisions
 
-**Partial decomposition.** `Order` deliberately extracts its presenter,
-controller, use case, and selectors so the full architecture is visible.
-`Orders`, `OrderItem`, `OrdersStatistics` and `OrdersResourcePicker` keep their
-units inline, each marked by a comment, because none of them has needed
-extraction yet.
+These decisions are specific to this sample, guided by its demonstration goals
+and the capabilities of Flutter and the selected libraries. The architecture
+defines responsibilities and boundaries without prescribing specific technical
+solutions.
 
-**The repository is the gateway/entities composite.** `OrdersRepository` is an
-`AsyncNotifier<List<OrderEntity>>`: it holds the entities and reaches the
-resource through `OrdersGateway`, which it consumes rather than defines. The
-interface is declared separately in `orders_gateway.dart`, so the repository
-cannot quietly become the one that dictates the contract.
+**Extracted units as Riverpod providers.** Extracted units in this sample are
+implemented as providers composed by widgets. `Order` deliberately extracts its
+presenter, controller, use case, and selectors so the full architecture is
+visible. Simpler widgets inline units without independent policy or reuse.
 
-**The gateway implementation is resolved at runtime.** `ordersServiceProvider`
-watches `ordersPresentationStore` and answers with either the in-memory or the
-remote service. Swapping the resource is a value change in an application
-business entity, not a structural change — and it is what
-`OrdersResourcePicker` writes to.
+**Widget build methods as composition roots.** A `ConsumerWidget`'s `build`
+composes the units including User Interface unit (implemented with widgets) and
+wires their dependencies through `WidgetRef`.
 
-**Optimistic writes, held as changes rather than snapshots.** A write drops the
-entity from the held state before the resource is asked, and re-reads
-afterwards so the resource has the last word. Several writes can be in flight
-at once, and both rules follow from that. The repository holds the orders the
-resource last answered with plus the changes asked for on top of them, so a
-write that fails drops its own change and the rest are held again — putting
-back a snapshot would take back the changes of the writes still in flight. And
-because each read answers with the resource as it stood when the read started,
-only the write that finishes last re-reads — an earlier one would stand back up
-orders the user has already been shown as gone.
+**Self-contained Flutter widgets.** Widgets own their view-facing behavior and
+resolve their data within their composition boundary. Their constructor
+parameters are limited to identity or configuration parameters, such as
+`orderId` and `itemId`, rather than receiving entity data through parameters.
+This is a deliberate demonstration choice to reduce structural coupling, not a
+mandatory rule.
 
-**Write state is an application business entity.**
-`OrdersRepositoryWritesInFlight` counts the writes running right now;
-`Orders` reads it for the status label, and the repository
-reads it back to decide whether to re-read. It is the state itself, not a copy
-of something the repository also keeps. Per-operation state
-comes from Riverpod's `Mutation` API, which `isDeletingOrderSelector` and
-`OrderItem` read to disable the button belonging to one order or item.
+**Application business entity as a Riverpod `Notifier`.**
+`OrdersPresentationStore` holds application-level state
+(`ordersResource: local | remote`) that persists across use case calls and has
+its own rules. It is managed by a dedicated `Notifier`, not by the repository.
 
-**Renders follow the read path only.** `Order` watches its presenter and reads
-its controller. Watching a controller would let the write path trigger a
-rebuild, which the architecture's separation of paths exists to prevent.
+**Repository as a Riverpod `AsyncNotifier`.** `OrdersRepository` combines
+gateway access and observable entity state. It consumes `OrdersGateway`,
+declared separately in `orders_gateway.dart`, exposes read and write
+operations, and manages the entities and optimistic updates.
 
-**The user interface is one driver among several.** `OrdersToastDriver` renders
-nothing: it listens to the repository and announces a failed read. It sits
-beside the feature in `app.dart`, not inside it.
+**Gateway selection at runtime.** `ordersServiceProvider` watches
+`ordersPresentationStore` and returns either `InMemoryOrdersService` or
+`RemoteOrdersService` according to `ordersResource`. The resource picker drops
+the held orders and changes that state, and the repository reads the selected
+resource.
+
+**Drivers beside the user interface.** `OrdersToastDriver` renders nothing: it
+listens to the repository and announces a failed read. It sits beside the
+feature in `app.dart`, as one driver among several.
 
 ## Folder structure
 
