@@ -472,6 +472,67 @@ void main() {
       });
     });
 
+    group('a failed write', () {
+      test('is recorded, with the write that failed', () async {
+        final (:container, :gateway) = wired();
+        servingItems(gateway, ['item-1', 'item-2']);
+        await container.read(ordersRepositoryProvider.future);
+
+        when(() => gateway.deleteItem(any(), any()))
+            .thenAnswer((_) async => throw Exception('no resource'));
+        await expectLater(
+          container
+              .read(ordersRepositoryProvider.notifier)
+              .deleteItem(orderId, itemId),
+          throwsException,
+        );
+
+        expect(
+          container.read(ordersRepositoryFailedWriteProvider)?.write,
+          OrdersWrite.deleteItem,
+          reason:
+              'the widget that asked for the write may be gone, so the '
+              'failure is kept where something can still react to it',
+        );
+      });
+
+      test('is recorded each time, even when it is the same write', () async {
+        final (:container, :gateway) = wired();
+        serving(gateway, ['order-1']);
+        await container.read(ordersRepositoryProvider.future);
+
+        final recorded = <OrdersFailedWrite?>[];
+        container.listen(
+          ordersRepositoryFailedWriteProvider,
+          (_, next) => recorded.add(next),
+        );
+
+        when(() => gateway.deleteOrder(any()))
+            .thenAnswer((_) async => throw Exception('no resource'));
+        final repository = container.read(ordersRepositoryProvider.notifier);
+        await expectLater(repository.deleteOrder(orderId), throwsException);
+        await expectLater(repository.deleteOrder(orderId), throwsException);
+
+        expect(
+          recorded,
+          hasLength(2),
+          reason: 'two failures are two announcements, not one',
+        );
+      });
+
+      test('is not recorded when the write lands', () async {
+        final (:container, :gateway) = wired();
+        serving(gateway, ['order-1']);
+        await container.read(ordersRepositoryProvider.future);
+
+        await container
+            .read(ordersRepositoryProvider.notifier)
+            .deleteOrder(orderId);
+
+        expect(container.read(ordersRepositoryFailedWriteProvider), isNull);
+      });
+    });
+
     group('dropOrders', () {
       test('drops the orders held', () async {
         final (:container, :gateway) = wired();

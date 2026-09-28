@@ -1,6 +1,8 @@
 import 'package:cleanreactive/features/orders/repositories/order_entities.dart';
 import 'package:cleanreactive/features/orders/repositories/orders_repository.dart';
 import 'package:cleanreactive/features/orders/repositories/orders_service/orders_service.dart';
+import 'package:cleanreactive/features/orders/selectors/orders_selector.dart';
+import 'package:cleanreactive/features/orders/use_cases/delete_order_use_case.dart';
 import 'package:cleanreactive/features/orders/widgets/order/order.dart';
 import 'package:cleanreactive/features/orders/widgets/order/order_controller.dart';
 import 'package:flutter/material.dart';
@@ -63,9 +65,8 @@ void main() {
       );
     });
 
-    testWidgets('goes with the order when it leaves the screen', (
-      tester,
-    ) async {
+    testWidgets('goes with the order when it leaves the screen, and so does '
+        'everything the order holds', (tester) async {
       final gateway = MockOrdersGateway();
       when(gateway.getOrders).thenAnswer((_) async => [makeOrder('order-1')]);
       final container = await pumpOrder(tester, gateway);
@@ -79,6 +80,12 @@ void main() {
       await tester.pump();
 
       expect(container.exists(orderController(orderId)), isFalse);
+      expect(
+        container.exists(deleteOrderUseCase),
+        isFalse,
+        reason: 'no unit the order holds outlives it',
+      );
+      expect(container.exists(ordersSelector), isFalse);
     });
   });
 }

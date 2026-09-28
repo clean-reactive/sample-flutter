@@ -105,16 +105,16 @@ its own rules. It is managed by a dedicated `Notifier`, not by the repository.
 
 **Framework state as an application business entity.** Flutter's
 `ScaffoldMessenger` holds and renders the toasts, so it is the source of truth
-and has no copy. Use cases reach it through `toastsPresentationStore`, a handle
-over the app's `scaffoldMessengerKey` that needs no `BuildContext`: extracted
-controllers and use cases never take one, and the widget that started a delete
-may be gone by the time it fails. A failed delete is announced by its use case; a failed
-read has no use case, so a driver reacts to it.
+and has no copy. `toastsPresentationStore` is a handle over the app's
+`scaffoldMessengerKey` that needs no `BuildContext`, so no unit outside the user
+interface ever takes one.
 
 **Repository as a Riverpod `AsyncNotifier`.** `OrdersRepository` combines
 gateway access and observable entity state. It consumes `OrdersGateway`,
 declared separately in `orders_gateway.dart`, exposes read and write
-operations, and manages the entities and optimistic updates.
+operations, and manages the entities and optimistic updates. A write that fails
+is recorded in `OrdersRepositoryFailedWrite`, with a token of its own so the
+same failure twice is announced twice.
 
 **Gateway selection at runtime.** `ordersServiceProvider` watches
 `ordersPresentationStore` and returns either `InMemoryOrdersService` or
@@ -123,8 +123,10 @@ the held orders and changes that state, and the repository reads the selected
 resource.
 
 **Drivers beside the user interface.** `OrdersToastDriver` renders nothing: it
-listens to the repository and announces a failed read. It sits beside the
-feature in `app.dart`, as one driver among several.
+listens to the repository and announces a failed read or write. Neither has
+anything left alive to catch it, so both exist only as state, and reacting to
+state is a driver's job. It sits beside the feature in `app.dart`, as one driver
+among several.
 
 ## Folder structure
 

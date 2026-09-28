@@ -6,7 +6,6 @@ import '../repositories/order_entities.dart';
 import '../repositories/orders_repository.dart';
 import '../selectors/is_deleting_order_selector.dart';
 import '../selectors/order_by_id_selector.dart';
-import '../stores/toasts_presentation.dart';
 import 'field.dart';
 
 /// Presenter, controller with an inline use case, and user interface inlined in
@@ -40,38 +39,33 @@ class const OrderItem({
     final isDeleteItemButtonDisabled = isDeletingItem || isDeletingOrder;
 
     // controller with an inline use case; decisions read entities, not display
-    // values
-    Future<void> deleteItemButtonPressed() async {
+    // values. It starts the write and waits for nothing: the optimistic delete
+    // takes this widget off the screen, and a failure is the repository's state
+    // for a driver to announce.
+    void deleteItemButtonPressed() {
       final order = ref.read(orderByIdSelector(orderEntityId));
       final isLastItem = order?.itemEntities.length == 1;
-      // Read before the write: the optimistic delete takes this widget off the
-      // screen, and its ref goes with it.
-      final toasts = ref.read(toastsPresentationStore.notifier);
 
-      try {
-        if (isLastItem) {
-          await deleteOrderMutation(orderEntityId).run(
+      if (isLastItem) {
+        deleteOrderMutation(orderEntityId)
+            .run(
+              ref,
+              (tsx) => tsx
+                  .get(ordersRepositoryProvider.notifier)
+                  .deleteOrder(orderEntityId),
+            )
+            .ignore();
+        return;
+      }
+
+      deleteOrderItemMutation((orderEntityId, itemEntityId))
+          .run(
             ref,
             (tsx) => tsx
                 .get(ordersRepositoryProvider.notifier)
-                .deleteOrder(orderEntityId),
-          );
-          return;
-        }
-
-        await deleteOrderItemMutation((orderEntityId, itemEntityId)).run(
-          ref,
-          (tsx) => tsx
-              .get(ordersRepositoryProvider.notifier)
-              .deleteItem(orderEntityId, itemEntityId),
-        );
-      } on Object catch (_) {
-        toasts.show(
-          isLastItem
-              ? 'could not delete the order'
-              : 'could not delete the item',
-        );
-      }
+                .deleteItem(orderEntityId, itemEntityId),
+          )
+          .ignore();
     }
 
     // user interface

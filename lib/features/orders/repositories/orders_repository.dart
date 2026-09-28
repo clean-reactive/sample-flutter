@@ -35,7 +35,8 @@ class OrdersRepository extends AsyncNotifier<List<OrderEntity>> {
   List<OrderEntity> _changed() =>
       _changes.values.fold(_base, (orders, change) => change(orders));
 
-  Future<void> _write({
+  Future<void> _write(
+    OrdersWrite write, {
     required _OrdersChange optimistically,
     required Future<void> Function(OrdersGateway gateway) asking,
   }) async {
@@ -47,16 +48,20 @@ class OrdersRepository extends AsyncNotifier<List<OrderEntity>> {
       _base = orders;
     }
 
-    final write = Object();
+    final token = Object();
     final inFlight = ref.read(ordersRepositoryWritesInFlightProvider.notifier);
     inFlight.started();
-    _changes[write] = optimistically;
+    _changes[token] = optimistically;
     _hold(_changed());
     try {
       await asking(ref.read(ordersServiceProvider));
     } on Object {
-      _changes.remove(write);
+      _changes.remove(token);
       _hold(_changed());
+      ref.read(ordersRepositoryFailedWriteProvider.notifier).failed((
+        write: write,
+        token: token,
+      ));
       rethrow;
     } finally {
       inFlight.finished();
@@ -70,6 +75,7 @@ class OrdersRepository extends AsyncNotifier<List<OrderEntity>> {
   }
 
   Future<void> deleteOrder(OrderEntityId orderId) => _write(
+    OrdersWrite.deleteOrder,
     optimistically: (orders) => [
       for (final order in orders)
         if (order.id != orderId) order,
@@ -78,6 +84,7 @@ class OrdersRepository extends AsyncNotifier<List<OrderEntity>> {
   );
 
   Future<void> deleteItem(OrderEntityId orderId, ItemEntityId itemId) => _write(
+    OrdersWrite.deleteItem,
     optimistically: (orders) => [
       for (final order in orders)
         if (order.id == orderId)
@@ -116,4 +123,27 @@ class OrdersRepositoryWritesInFlight extends Notifier<int> {
 final ordersRepositoryWritesInFlightProvider =
     NotifierProvider<OrdersRepositoryWritesInFlight, int>(
       OrdersRepositoryWritesInFlight.new,
+    );
+
+enum OrdersWrite { deleteOrder, deleteItem }
+
+/// A write that failed, and a token of its own: two failures of the same write
+/// are still two failures.
+typedef OrdersFailedWrite = ({OrdersWrite write, Object token});
+
+/// The write that failed last.
+///
+/// A failure outlives whatever asked for the write — an optimistic delete takes
+/// the widget that asked off the screen before the resource answers — so it is
+/// kept as state here, where a driver reacts to it.
+class OrdersRepositoryFailedWrite extends Notifier<OrdersFailedWrite?> {
+  @override
+  OrdersFailedWrite? build() => null;
+
+  void failed(OrdersFailedWrite write) => state = write;
+}
+
+final ordersRepositoryFailedWriteProvider =
+    NotifierProvider<OrdersRepositoryFailedWrite, OrdersFailedWrite?>(
+      OrdersRepositoryFailedWrite.new,
     );
