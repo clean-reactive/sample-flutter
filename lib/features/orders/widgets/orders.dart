@@ -91,7 +91,7 @@ class const Orders({super.key}) extends ConsumerWidget {
           const SizedBox(height: 20),
 
           for (final orderId in orderIds) ...[
-            Order(orderId: orderId),
+            Order(key: ValueKey(orderId), orderId: orderId),
             const SizedBox(height: 12),
           ],
         ],

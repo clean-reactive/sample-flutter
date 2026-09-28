@@ -441,6 +441,31 @@ void main() {
     );
   });
 
+  testWidgets('keeps an opened order open when an order above it is deleted', (
+    tester,
+  ) async {
+    final gateway = MockOrdersGateway();
+
+    var held = ordersMock;
+    when(gateway.getOrders).thenAnswer((_) async => held);
+
+    await pumpOrders(tester, gateway);
+    await tester.pumpAndSettle();
+
+    await openOrder(tester, 'order-2');
+    expect(itemsOnScreen(tester, 'order-2'), ['item-3']);
+
+    held = ordersMock.skip(1).toList();
+    await tester.ensureVisible(deleteOrderButton('order-1'));
+    await tester.tap(deleteOrderButton('order-1'));
+    await tester.pumpAndSettle();
+
+    // what is open belongs to the order that was opened, not to the place on
+    // screen it happened to be in
+    expect(itemsOnScreen(tester, 'order-2'), ['item-3']);
+    expect(itemsOnScreen(tester, 'order-3'), isEmpty);
+  });
+
   testWidgets('wipes the orders of the resource left behind', (tester) async {
     final local = MockOrdersGateway();
     final remote = MockOrdersGateway();

@@ -83,7 +83,11 @@ class const _UserInterface({
                 childrenPadding: EdgeInsets.zero,
                 children: [
                   for (final itemId in presenter.itemIds) ...[
-                    OrderItem(orderId: presenter.orderId, itemId: itemId),
+                    OrderItem(
+                      key: ValueKey(itemId),
+                      orderId: presenter.orderId,
+                      itemId: itemId,
+                    ),
                     const SizedBox(height: 4),
                   ],
                 ],
