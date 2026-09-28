@@ -58,7 +58,7 @@ diagram maps to this codebase.
 | Architectural unit              | Flutter / Riverpod equivalent                  | Location                                                                     |
 | ------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------- |
 | Enterprise business entity      | Plain Dart class                               | `repositories/order_entities.dart`                                           |
-| Application business entity     | `Notifier` store                               | `stores/orders_presentation.dart`, `orders_repository.dart`                  |
+| Application business entity     | `Notifier` store, framework state              | `stores/orders_presentation.dart`, `toasts_presentation.dart`, …             |
 | Gateway interface               | `abstract interface class`                     | `repositories/orders_gateway.dart`                                           |
 | Repository (gateway + entities) | `AsyncNotifier`                                | `repositories/orders_repository.dart`                                        |
 | Gateway implementation          | `OrdersGateway` implementation                 | `repositories/orders_service/`                                               |
@@ -103,6 +103,14 @@ mandatory rule.
 (`ordersResource: local | remote`) that persists across use case calls and has
 its own rules. It is managed by a dedicated `Notifier`, not by the repository.
 
+**Framework state as an application business entity.** Flutter's
+`ScaffoldMessenger` holds and renders the toasts, so it is the source of truth
+and has no copy. Use cases reach it through `toastsPresentationStore`, a handle
+over the app's `scaffoldMessengerKey` that needs no `BuildContext`: extracted
+controllers and use cases never take one, and the widget that started a delete
+may be gone by the time it fails. A failed delete is announced by its use case; a failed
+read has no use case, so a driver reacts to it.
+
 **Repository as a Riverpod `AsyncNotifier`.** `OrdersRepository` combines
 gateway access and observable entity state. It consumes `OrdersGateway`,
 declared separately in `orders_gateway.dart`, exposes read and write
@@ -142,7 +150,8 @@ lib
         │   ├── order_by_id_selector.dart
         │   └── orders_selector.dart
         ├── stores                          # application business entities
-        │   └── orders_presentation.dart
+        │   ├── orders_presentation.dart
+        │   └── toasts_presentation.dart    # handle to the app's toast state
         ├── use_cases                       # use case interactors
         │   └── delete_order_use_case.dart
         └── widgets                         # user interface, presenters, controllers

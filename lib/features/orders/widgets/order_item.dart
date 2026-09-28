@@ -6,6 +6,7 @@ import '../repositories/order_entities.dart';
 import '../repositories/orders_repository.dart';
 import '../selectors/is_deleting_order_selector.dart';
 import '../selectors/order_by_id_selector.dart';
+import '../stores/toasts_presentation.dart';
 import 'field.dart';
 
 /// Presenter, controller with an inline use case, and user interface inlined in
@@ -43,6 +44,9 @@ class const OrderItem({
     Future<void> deleteItemButtonPressed() async {
       final order = ref.read(orderByIdSelector(orderEntityId));
       final isLastItem = order?.itemEntities.length == 1;
+      // Read before the write: the optimistic delete takes this widget off the
+      // screen, and its ref goes with it.
+      final toasts = ref.read(toastsPresentationStore.notifier);
 
       try {
         if (isLastItem) {
@@ -62,7 +66,11 @@ class const OrderItem({
               .deleteItem(orderEntityId, itemEntityId),
         );
       } on Object catch (_) {
-        // noop
+        toasts.show(
+          isLastItem
+              ? 'could not delete the order'
+              : 'could not delete the item',
+        );
       }
     }
 

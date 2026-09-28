@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../repositories/order_entities.dart';
 import '../repositories/orders_repository.dart';
+import '../stores/toasts_presentation.dart';
 
 class const DeleteOrderUseCase(final Ref _ref) {
   Future<void> call(OrderEntityId orderId) async {
@@ -12,7 +13,9 @@ class const DeleteOrderUseCase(final Ref _ref) {
             tsx.get(ordersRepositoryProvider.notifier).deleteOrder(orderId),
       );
     } on Object catch (_) {
-      // noop
+      _ref
+          .read(toastsPresentationStore.notifier)
+          .show('could not delete the order');
     }
   }
 }

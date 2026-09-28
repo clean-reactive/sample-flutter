@@ -5,6 +5,7 @@ import 'package:cleanreactive/features/orders/repositories/order_entities.dart';
 import 'package:cleanreactive/features/orders/repositories/orders_service/in_memory_orders_service.dart';
 import 'package:cleanreactive/features/orders/repositories/orders_service/orders_service.dart';
 import 'package:cleanreactive/features/orders/repositories/orders_service/remote_orders_service.dart';
+import 'package:cleanreactive/features/orders/stores/toasts_presentation.dart';
 import 'package:cleanreactive/features/orders/widgets/order/order.dart';
 import 'package:cleanreactive/features/orders/widgets/order_item.dart';
 import 'package:cleanreactive/features/orders/widgets/orders.dart';
@@ -24,8 +25,9 @@ import '../repositories/mock_orders_gateway.dart';
 /// to what a user sees.
 ///
 /// Both drivers are placed, the way the application places them: the screen,
-/// and the toast beside it. A scenario that ends in an announcement has
-/// somewhere for it to arrive.
+/// and the toast beside it. The messenger is wired the way the application
+/// wires it, so a scenario that ends in an announcement has somewhere for it
+/// to arrive.
 Future<void> pumpOrders(WidgetTester tester, MockOrdersGateway gateway) =>
     tester.pumpWidget(
       ProviderScope(
@@ -34,13 +36,16 @@ Future<void> pumpOrders(WidgetTester tester, MockOrdersGateway gateway) =>
         // doubling to 6.4s. A scenario about what a failed read leaves on
         // screen cannot wait that out.
         retry: (_, _) => null,
-        child: const MaterialApp(
-          home: Scaffold(
-            body: Stack(
-              children: [
-                SingleChildScrollView(child: Orders()),
-                OrdersToastDriver(),
-              ],
+        child: Consumer(
+          builder: (context, ref, _) => MaterialApp(
+            scaffoldMessengerKey: ref.watch(toastsPresentationStore),
+            home: const Scaffold(
+              body: Stack(
+                children: [
+                  SingleChildScrollView(child: Orders()),
+                  OrdersToastDriver(),
+                ],
+              ),
             ),
           ),
         ),
@@ -315,8 +320,12 @@ void main() {
     delete.completeError(Exception('the resource refused the delete'));
     await tester.pumpAndSettle();
 
-    // back where it was, between the two that never moved
+    // back where it was, between the two that never moved, and said so
     expect(ordersOnScreen(tester), ['order-1', 'order-2', 'order-3']);
+    expect(
+      find.widgetWithText(SnackBar, 'could not delete the order'),
+      findsOneWidget,
+    );
     expect(find.text('User user-b'), findsOneWidget);
 
     // and counted again, every statistic as it was before the press
@@ -421,8 +430,13 @@ void main() {
     delete.completeError(Exception('the resource refused the delete'));
     await tester.pumpAndSettle();
 
-    // back where it was, ahead of the item that never moved
+    // back where it was, ahead of the item that never moved, and said so —
+    // though the row that asked for the delete was gone while it ran
     expect(itemsOnScreen(tester, 'order-1'), ['item-1', 'item-2']);
+    expect(
+      find.widgetWithText(SnackBar, 'could not delete the item'),
+      findsOneWidget,
+    );
     expect(find.text('2 items'), findsOneWidget);
 
     // and counted again, every statistic as it was before the press
