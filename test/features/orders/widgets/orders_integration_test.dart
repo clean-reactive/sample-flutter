@@ -6,7 +6,7 @@ import 'package:cleanreactive/features/orders/repositories/orders_service/in_mem
 import 'package:cleanreactive/features/orders/repositories/orders_service/orders_service.dart';
 import 'package:cleanreactive/features/orders/repositories/orders_service/remote_orders_service.dart';
 import 'package:cleanreactive/features/orders/widgets/order/order.dart';
-import 'package:cleanreactive/features/orders/widgets/order_item/order_item.dart';
+import 'package:cleanreactive/features/orders/widgets/order_item.dart';
 import 'package:cleanreactive/features/orders/widgets/orders.dart';
 import 'package:cleanreactive/features/orders/widgets/pill.dart';
 import 'package:flutter/material.dart';

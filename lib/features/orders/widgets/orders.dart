@@ -1,19 +1,13 @@
+import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../repositories/orders_repository.dart';
-import '../selectors/is_orders_mutating_selector.dart';
-import '../selectors/order_ids_selector.dart';
+import '../selectors/orders_selector.dart';
 import 'order/order.dart';
 import 'orders_resource_picker.dart';
 import 'orders_statistics.dart';
 import 'section_label.dart';
-
-typedef OrdersPresenter = ({
-  bool isProcessing,
-  String statusLabel,
-  Iterable<String> orderIds,
-});
 
 class Orders extends ConsumerWidget {
   const Orders({super.key});
@@ -30,8 +24,9 @@ class Orders extends ConsumerWidget {
         ),
       ),
     );
-    final isMutating = ref.watch(isOrdersMutatingSelector);
-
+    final isMutating = ref.watch(
+      ordersRepositoryWritesInFlightProvider.select((count) => count > 0),
+    );
     final isProcessing = read.isLoading || isMutating;
     final statusLabel = switch ((
       read.isLoading,
@@ -46,25 +41,14 @@ class Orders extends ConsumerWidget {
       _ => 'idle',
     };
 
-    final orderIds = ref.watch(orderIdsSelector);
-
-    return _UserInterface(
-      presenter: (
-        isProcessing: isProcessing,
-        statusLabel: statusLabel,
-        orderIds: orderIds,
+    // An [IList], so an unchanged read compares equal and announces nothing.
+    final orderIds = ref.watch(
+      ordersSelector.select(
+        (orders) => orders.map((order) => order.id).toIList(),
       ),
     );
-  }
-}
 
-class _UserInterface extends StatelessWidget {
-  const _UserInterface({required this.presenter});
-
-  final OrdersPresenter presenter;
-
-  @override
-  Widget build(BuildContext context) {
+    // user interface
     final theme = Theme.of(context);
 
     return ConstrainedBox(
@@ -88,7 +72,7 @@ class _UserInterface extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (presenter.isProcessing) ...[
+                  if (isProcessing) ...[
                     const SizedBox(
                       width: 12,
                       height: 12,
@@ -96,10 +80,7 @@ class _UserInterface extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                   ],
-                  Text(
-                    presenter.statusLabel,
-                    style: theme.textTheme.labelMedium,
-                  ),
+                  Text(statusLabel, style: theme.textTheme.labelMedium),
                 ],
               ),
             ],
@@ -111,7 +92,7 @@ class _UserInterface extends StatelessWidget {
           const OrdersStatistics(),
           const SizedBox(height: 20),
 
-          for (final orderId in presenter.orderIds) ...[
+          for (final orderId in orderIds) ...[
             Order(orderId: orderId),
             const SizedBox(height: 12),
           ],

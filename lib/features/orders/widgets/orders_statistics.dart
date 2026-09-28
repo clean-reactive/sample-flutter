@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../selectors/orders_selector.dart';
-import '../selectors/total_items_quantity_selector.dart';
 import 'pill.dart';
 
 class OrdersStatistics extends ConsumerWidget {
@@ -25,7 +24,12 @@ class OrdersStatistics extends ConsumerWidget {
             '${orders.fold<int>(0, (count, order) => count + order.itemEntities.length)}',
       ),
     );
-    final totalItemsQuantity = '${ref.watch(totalItemsQuantitySelector)}';
+    final totalItemsQuantity = ref.watch(
+      ordersSelector.select(
+        (orders) =>
+            '${orders.fold<int>(0, (total, order) => total + order.itemEntities.fold<int>(0, (subtotal, item) => subtotal + item.quantity))}',
+      ),
+    );
 
     // user interface
     return Wrap(

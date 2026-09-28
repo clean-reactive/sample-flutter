@@ -10,6 +10,12 @@ gateway interface, the repository, use cases, selectors, presenters,
 controllers, drivers, and the user interface — with unit, integration and
 widget tests across them.
 
+> :bulb: **Architecture reference implementation.** `widgets/order` keeps its
+> presenter, controller, and use case separate so the architecture is visible.
+> Simpler widgets inline their units. This is a demonstration choice, not a
+> rule that every widget must follow. See the
+> [Development Methodology](https://github.com/clean-reactive/documentation/blob/main/docs/methodology.md).
+
 ## Getting started
 
 The Flutter version is pinned in `.fvmrc`. With [fvm](https://fvm.app/):
@@ -40,7 +46,7 @@ Without fvm, drop the `fvm` prefix and use Flutter 3.47.1.
 - [Riverpod](https://riverpod.dev/) (`flutter_riverpod` 3.x), including the
   experimental `Mutation` API for per-operation write state
 - [fast_immutable_collections](https://pub.dev/packages/fast_immutable_collections)
-  for selectors that must compare equal across reads
+  for id lists that must compare equal across reads
 - [flutter_test](https://docs.flutter.dev/testing) + [mocktail](https://pub.dev/packages/mocktail)
 - [flutter_lints](https://pub.dev/packages/flutter_lints)
 
@@ -49,27 +55,33 @@ Without fvm, drop the `fvm` prefix and use Flutter 3.47.1.
 The table below shows how each unit from the Clean Reactive Architecture
 diagram maps to this codebase.
 
-| Architectural unit              | Flutter / Riverpod equivalent           | Location                                                    |
-| ------------------------------- | --------------------------------------- | ----------------------------------------------------------- |
-| Enterprise business entity      | Plain Dart class                        | `repositories/order_entities.dart`                          |
-| Application business entity     | `Notifier` store                        | `stores/orders_presentation.dart`, `orders_repository.dart` |
-| Gateway interface               | `abstract interface class`              | `repositories/orders_gateway.dart`                          |
-| Repository (gateway + entities) | `AsyncNotifier`                         | `repositories/orders_repository.dart`                       |
-| Gateway implementation          | `OrdersGateway` implementation          | `repositories/orders_service/`                              |
-| Use case interactor             | Callable class behind a `Provider`      | `use_cases/delete_order_item_use_case.dart`                 |
-| Selector                        | `Provider` derived from the repository  | `selectors/orders_selector.dart`, …                         |
-| Presenter                       | `Provider` returning a view model       | `widgets/order/order_presenter.dart`, …                     |
-| Controller                      | `Provider` returning callbacks          | `widgets/order_item/order_item_controller.dart`             |
-| ViewModel                       | Record `typedef`                        | `widgets/order/order_types.dart`, …                         |
-| User interface                  | `ConsumerWidget` + `_UserInterface`     | `widgets/orders.dart`, `order/order.dart`, …                |
-| Driver                          | Widget that listens and renders nothing | `drivers/toast_driver.dart`                                 |
-| External resource               | Whatever a service talks to             | behind `RemoteOrdersService`                                |
+| Architectural unit              | Flutter / Riverpod equivalent                  | Location                                                                     |
+| ------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------- |
+| Enterprise business entity      | Plain Dart class                               | `repositories/order_entities.dart`                                           |
+| Application business entity     | `Notifier` store                               | `stores/orders_presentation.dart`, `orders_repository.dart`                  |
+| Gateway interface               | `abstract interface class`                     | `repositories/orders_gateway.dart`                                           |
+| Repository (gateway + entities) | `AsyncNotifier`                                | `repositories/orders_repository.dart`                                        |
+| Gateway implementation          | `OrdersGateway` implementation                 | `repositories/orders_service/`                                               |
+| Use case interactor             | Callable class behind a `Provider`, or inline  | `use_cases/delete_order_use_case.dart`, `widgets/order_item.dart`            |
+| Selector                        | `Provider` derived from the repository         | `selectors/orders_selector.dart`, `order_by_id_selector.dart`, …             |
+| Presenter                       | `Provider` returning a view model, or inline   | `widgets/order/order_presenter.dart`, inline in simpler widgets              |
+| Controller                      | `Provider` returning callbacks, or inline      | `widgets/order/order_controller.dart`, inline in simpler widgets             |
+| ViewModel                       | Record `typedef`                               | `widgets/order/order_types.dart`                                             |
+| User interface                  | `ConsumerWidget`, `_UserInterface` in `Order`  | `widgets/orders.dart`, `order/order.dart`, `order_item.dart`, …              |
+| Driver                          | Widget that listens and renders nothing        | `drivers/toast_driver.dart`                                                  |
+| External resource               | Whatever a service talks to                    | behind `RemoteOrdersService`                                                 |
 
 ## UML diagram representing application architecture
 
 ![clean-reactive-architecture-repository-with-gateway-interface](./clean-reactive-architecture-repository-with-gateway-interface.png)
 
 ## Key design decisions
+
+**Partial decomposition.** `Order` deliberately extracts its presenter,
+controller, use case, and selectors so the full architecture is visible.
+`Orders`, `OrderItem`, `OrdersStatistics` and `OrdersResourcePicker` keep their
+units inline, each marked by a comment, because none of them has needed
+extraction yet.
 
 **The repository is the gateway/entities composite.** `OrdersRepository` is an
 `AsyncNotifier<List<OrderEntity>>`: it holds the entities and reaches the
@@ -96,14 +108,13 @@ orders the user has already been shown as gone.
 
 **Write state is an application business entity.**
 `OrdersRepositoryWritesInFlight` counts the writes running right now;
-`isOrdersMutatingSelector` reads it for the status label, and the repository
+`Orders` reads it for the status label, and the repository
 reads it back to decide whether to re-read. It is the state itself, not a copy
 of something the repository also keeps. Per-operation state
 comes from Riverpod's `Mutation` API, which `isDeletingOrderSelector` and
-`isDeletingItemSelector` read to disable the button belonging to one order or
-item.
+`OrderItem` read to disable the button belonging to one order or item.
 
-**Renders follow the read path only.** A widget watches its presenter and reads
+**Renders follow the read path only.** `Order` watches its presenter and reads
 its controller. Watching a controller would let the write path trigger a
 rebuild, which the architecture's separation of paths exists to prevent.
 
@@ -131,30 +142,21 @@ lib
         │       ├── orders_service.dart     # picks the implementation at runtime
         │       └── remote_orders_service.dart
         ├── selectors                       # selectors
-        │   ├── is_deleting_item_selector.dart
         │   ├── is_deleting_order_selector.dart
-        │   ├── is_orders_mutating_selector.dart
-        │   ├── item_by_id_selector.dart
         │   ├── order_by_id_selector.dart
-        │   ├── order_ids_selector.dart
-        │   ├── order_item_ids_selector.dart
-        │   ├── orders_selector.dart
-        │   └── total_items_quantity_selector.dart
+        │   └── orders_selector.dart
         ├── stores                          # application business entities
         │   └── orders_presentation.dart
         ├── use_cases                       # use case interactors
-        │   └── delete_order_item_use_case.dart
+        │   └── delete_order_use_case.dart
         └── widgets                         # user interface, presenters, controllers
             ├── field.dart
             ├── order
-            │   ├── order.dart              # user interface + inline controller
+            │   ├── order.dart              # user interface
+            │   ├── order_controller.dart
             │   ├── order_presenter.dart
             │   └── order_types.dart        # view models
-            ├── order_item
-            │   ├── order_item.dart
-            │   ├── order_item_controller.dart
-            │   ├── order_item_presenter.dart
-            │   └── order_item_types.dart
+            ├── order_item.dart             # inline presenter, controller, use case
             ├── orders.dart                 # user interface + inline presenter
             ├── orders_resource_picker.dart # every unit inline
             ├── orders_statistics.dart      # every unit inline
@@ -169,7 +171,7 @@ The test tree mirrors `lib`, and the levels follow the
 
 - _Unit_ — one unit with everything below it stood in for, e.g.
   `repositories/orders_repository_test.dart` and
-  `selectors/total_items_quantity_selector_test.dart`.
+  `selectors/is_deleting_order_selector_test.dart`.
 - _Integration_ — units composed with only the resource doubled, e.g. the
   `selectors/*_integration_test.dart` files reading through a real repository,
   `widgets/orders_integration_test.dart` driving the screen down to the
